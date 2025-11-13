@@ -1,0 +1,253 @@
+/***
+ * ┏┓┓ ┏┏┓┓┏┳┓┏┓  ┏┓┓┏┏┓┳┓┏┓┏┓┳┓┏┓┏┓┏┳┓
+ * ┗┓┃┃┃┣┫┗┫┃┃┃ ━━┣ ┃┃┣ ┣┫┣ ┃┃┣┫┣ ┗┓ ┃ 
+ * ┗┛┗┻┛┛┗┗┛┛┗┗┛  ┗┛┗┛┗┛┛┗┻ ┗┛┛┗┗┛┗┛ ┻ 
+ * */
+@import url("/home/luisp/.cache/wal/colors-waybar.css");
+
+/* Colors from Pywal */
+@define-color background1 	    @background; /* Pywal background */
+@define-color background-alt 	    @color0; /* Using color0 for a darker background alt */
+@define-color background-alt-darker @color8; /* Using color8 for an even darker background alt */
+@define-color accent-normal    	    @color2; /* Pywal color2 for normal accents (e.g., success, active states) */
+@define-color accent-error     	    @color1; /* Pywal color1 for error accents (e.g., close buttons) */
+@define-color bordercolor           @color0; /* Pywal color0 for borders, often the same as background for subtle look */
+@define-color fontcolor 	    @foreground; /* Pywal foreground for primary text */
+@define-color fontaltcolor 	    @color7; /* Pywal color7 for alternative text, a slightly lighter shade */
+
+
+/* Config */
+
+* {
+    font-family: "JetbrainsMono NFP SemiBold";
+    font-style: italic;
+}
+
+/* Notification */
+
+.notification {
+    background: @background1;
+    color: @fontcolor;
+    border: 1px solid @bordercolor;
+    border-radius: 10px;
+    padding:10px;
+}
+
+.body {
+  color: @fontcolor;
+}
+
+.summary {
+  font-size: 16px;
+  font-weight: 700;
+  background: transparent;
+  color: @accent-normal;
+  text-shadow: none;
+}
+
+.time {
+  font-size: 16px;
+  font-weight: 700;
+  background: transparent;
+  color: @fontcolor;
+  text-shadow: none;
+  margin-right: 18px;
+}
+
+.close-button {
+  background-color: @accent-error;
+  color: @fontaltcolor; /* Using fontaltcolor for contrast on error button */
+  margin-top: 5px;
+  margin-right: 5px;
+  border-radius: 6px;
+}
+
+.notification-default-action:hover,
+.notification-action:hover {
+    color: @accent-normal; /* Accent color on hover for actions */
+    background: transparent;
+}
+
+.notification.critical progress {
+  background-color: @accent-error;
+}
+
+.notification.low progress,
+.notification.normal progress {
+  background-color: @accent-normal;
+}
+
+/* Control Center */
+
+.control-center {
+    background-color: @background1;
+    color: @fontcolor;
+    border: 3px solid @color1;
+    padding: 10px;
+}
+
+/* Notifications expanded-group */
+
+.notification-group {
+  background-color: transparent;
+  margin: 2px 8px 2px 8px;
+  font-size: 14px;
+
+}
+
+.notification-group-icon {
+  color: @fontcolor;
+}
+
+.notification-group-headers {
+  color: @fontcolor;
+}
+
+.notification-group-collapse-button,
+.notification-group-close-all-button {
+  background: @accent-normal;
+  color: @fontaltcolor; /* Using fontaltcolor for contrast on these buttons */
+  margin: 4px; 
+  border-radius: 6px;
+  padding: 4px;
+}
+
+.notification-group-collapse-button:hover,
+.notification-group-close-all-button:hover {
+  background: @accent-error; /* Accent error on hover */
+  color: @fontaltcolor;
+}  
+
+
+/* widget title */
+.widget-title {
+  color: @fontcolor;
+}
+.widget-title>button {
+  font-size: 1rem;
+  color: @fontcolor;
+  background: @background1-alt-darker; /* Using the darker alt background */
+  box-shadow: none;
+}
+
+.widget-title>button:hover {
+  background: @accent-error;
+  color: @fontaltcolor;
+}
+
+/* widget button grid */
+button {
+    border: 0px;
+    min-width: 35px;
+    background: @background1-alt; /* Using background-alt for general buttons */
+}
+
+.widget-buttons-grid {
+  font-size: x-large;
+  background: @background1-alt-darker;
+}
+
+.widget-buttons-grid > flowbox > flowboxchild > button {
+    color: @fontcolor;
+    margin: 8px;
+    padding: 10px;
+}
+
+.widget-buttons-grid>flowbox>flowboxchild>button:hover {
+  background: alpha(@accent-normal, 0.55); /* Using accent-normal with transparency on hover */
+  color: @fontaltcolor; /* Ensure text is visible on hover */
+}
+
+.widget-buttons-grid > flowbox > flowboxchild > button.toggle:checked {
+  background: @accent-normal;
+}
+
+.widget-buttons-grid > flowbox > flowboxchild > button.toggle:checked label {
+    color: @fontaltcolor;
+}
+
+
+
+
+/* dnd widget */
+.widget-dnd {
+  background: transparent;
+  border: 1px solid transparent;
+  font-size: large;
+  color: @fontcolor;
+}
+
+.widget-dnd>label {
+  color: @fontcolor;
+}
+
+.widget-dnd>switch {
+  background: @background1-alt; /* Background-alt for switch off state */
+  color: @fontcolor;
+  border-radius: 6px;
+}
+
+.widget-dnd>switch:checked {
+  background: @accent-error; /* Accent-error for switch on state */
+  border: 1px solid @accent-error;
+}
+
+
+/* volume & backlight widget */
+
+.widget-volume {
+  background: @background1-alt-darker;
+  color: @fontcolor;
+  font-size: x-large;
+  margin-left: 5px;
+}
+
+
+.widget-backlight {
+  background: @background1-alt-darker;
+  color: @fontcolor;
+  font-size: x-large;
+}
+
+/* music player widget */
+.widget-mpris {
+  background: transparent;
+  margin: 8px;
+}
+
+.widget-mpris button {
+  background-color: transparent;
+  border-radius: 6px;
+}
+
+.widget-mpris button:hover {
+  background-color: @accent-normal;
+  color: @fontaltcolor;
+}
+
+
+/* sliders in backlight and volume */
+
+trough slider {
+    background: @fontcolor; /* Font color for the empty part of the slider */
+}
+
+trough slider:hover {
+    background: @accent-normal; /* Accent color on hover for slider */
+}
+
+
+trough highlight {
+  background: @accent-normal; /* Accent color for the filled part of the slider */
+}
+
+scrollbar, scrollbar * {
+    all: unset;
+    opacity: 0;
+    width: 0px;
+    height: 0px;
+}
+
+#notification-scroll{
+    overflow: hidden;
+}
