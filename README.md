@@ -1,6 +1,10 @@
 # Hyprland_dotfiles
-Archivos de configuración que uso en mi sistema de Arch+Hyprland en mi dia 
+Archivos de configuración que uso en mi sistema de Arch+Hyprlan
+
 ![Hyprland_dotfiles](images/image1.png "Escritorio Hyprland")
+
 ![Hyprland_dotfiles](images/image2.png "Rofi")
+
 ![Hyprland_dotfiles](images/image3.png "Rofi Wallpaper selector")
+
 ![Hyprland_dotfiles](images/image4.png "wlogout theme")
