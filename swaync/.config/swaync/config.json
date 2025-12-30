@@ -20,8 +20,9 @@
 	"timeout-low": 3,
 	"timeout-critical": 0,
 	"fit-to-screen": false,
-	"control-center-width": 410,
-	"control-center-height": -1,
+	"control-center-width": 420,
+	"control-center-height": 1000,
+    "scroll": false,
 	"keyboard-shortcuts": true,
 	"image-visibility": "always",
 	"transition-time": 200,
@@ -38,7 +39,7 @@
 		"title": {
 			"text": "Notifications",
 			"clear-all-button": true,
-			"button-text": " "
+			"button-text": "  "
 		},
 		"dnd": {
 			"text": "Do Not Disturb"
@@ -58,41 +59,41 @@
 		"buttons-grid": {
 			"actions": [
 				{
-					"label": "",
+					"label": "  ",
 					"command": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
 					"type": "toggle"
 				},
 				{
-					"label": "",
+					"label": "  ", 
 					"command": "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle",
 					"type": "toggle"
 				},
 				{
-					"label": "󰤨",
+					"label": " 󰤨 ",
 					"command": "alacritty -e zsh -i -c nmtui"
 				},
 				{
-					"label": "󰂯",
+					"label": " 󰂯 ",
 					"command": "blueman-manager"
 				},
 
 				{
-					"label":"󱡽",
+					"label":" 󱡽 ",
 					"command": "bash -c $HOME/.config/hypr/scripts/airplaneMode.sh",
 					"type": "toggle"
 				},
 				{
-					"label":"",
+					"label":"  ",
 					"command": "shutdown now"
 				},
 
 				{
-					"label": "",
+					"label": "  ",
 					"command": "killall swaync && sleep 1 && ~/.swaylock/config/lock.sh"
 				},
 				{
-					"label": "",
-					"command": "~/.config/hypr/scripts/wlogout.sh"
+					"label": "  ",
+					"command": "~/.config/hypr/scripts_hypr/wlogout.sh"
 				}
 
 			]

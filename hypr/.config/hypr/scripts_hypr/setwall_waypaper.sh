@@ -4,7 +4,7 @@ notify-send -i /home/luisp/Pictures/icon/arch.png " Sistema" " Cambiando wallpap
 ruta=$(swww query | grep 'currently displaying' | sed -E 's/.*image: (.*)/\1/')
 
 magick "$ruta" -resize 800x600 ~/.cache/wallpaper.jpg
-wal -i "$ruta"
+wal -i "$ruta" --saturate 0.6 
 killall cava 
 sleep 1.5 && pkill waybar && hyprctl dispatch exec waybar
 hyprctl reload

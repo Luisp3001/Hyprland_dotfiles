@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
 
 wall_dir="$HOME/wallpaper" # Directorio de fondos de pantalla
+echo "Directorio de fondos de pantalla: $wall_dir"
 cache_dir="$HOME/.cache/thumbnails/bgselector" # Directorio de caché de miniaturas
 
 mkdir -p "$cache_dir"
 
 # Generar miniaturas
-find "$wall_dir" -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) | while read -r imagen; do
+find -L "$wall_dir" -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) | while read -r imagen; do
 	filename="$(basename "$imagen")"
 	thumb="$cache_dir/$filename"
 	if [ ! -f "$thumb" ]; then
-		magick convert -strip "$imagen" -thumbnail x540^ -gravity center -extent 262x540 "$thumb"
+        echo "Creando miniatura para $imagen"
+        magick "$imagen" -strip -resize "262x540^" -gravity center -extent 262x540 "$thumb"
+        if [ $? -ne 0 ]; then
+            echo "Error al crear la miniatura para $imagen"
+        fi
 	fi
 done
 
@@ -21,7 +26,7 @@ wall_selection=$(ls "$wall_dir" | while read -r A; do echo -en "$A\x00icon\x1f$c
 if [ -n "$wall_selection" ]; then
 	swww img "$wall_dir/$wall_selection" -t grow --transition-duration 1 --transition-fps 75
 	sleep 0.2
-	~/.config/hypr/scripts/./setwall_waypaper.sh
+	~/.config/hypr/scripts_hypr/./setwall_waypaper.sh
 	exit 0
 else
 	exit 1

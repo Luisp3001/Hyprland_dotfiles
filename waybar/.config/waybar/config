@@ -1,5 +1,4 @@
- {
-
+{
 	/*----------Global Properties-------------*/
 	"layer": "top",
 	"position": "top",
@@ -20,7 +19,6 @@
 	],
 	/*----------Modules Center--------------*/
 	"modules-center": [
-		"custom/weather",
 		"hyprland/workspaces"
 	],
 	/*----------Modules Center--------------*/
@@ -38,7 +36,8 @@
 		"format": "{name}",
 		"on-click": "activate",
 		"on-scroll-down": "hyprctl dispatch workspace e+1",
-		"on-scroll-up": "hyprctl dispatch workspace e-1"
+		"on-scroll-up": "hyprctl dispatch workspace e-1",
+        "show-special": true
 	},
 
 	/*-----------SwayNC----------------*/
@@ -70,19 +69,9 @@
 	"custom/launcher": {
 		"format": "󰣇",
 		"tooltip": false,
-		"on-click": "~/.config/hypr/scripts/launcher.sh"
+		"on-click": "~/.config/hypr/scripts_hypr/launcher.sh"
 	},
 
-	/*--------------Pacman--------------------*/
-	"custom/pacman": {
-		"format": "󰅢{}",
-		"interval": 30,   
-		"exec": "checkupdates | wc -l",
-		"exec-if": "exit 0",
-		"on-click": "ghostty --title=PacUpdate -e 'sleep 0.1; paru -Syu; echo Done - Press enter to exit; read'; pkill -SIGRTMIN+8 waybar",
-		"signal": 8,
-		"tooltip": false
-	},
     /*---------------Playerctl---------------*/
 	"custom/playerctl#backward": {
 		"format": "󰙣 ",
@@ -146,7 +135,8 @@
 	/*------------Tray--------------------*/
 	"tray": {
 		"icon-size": 20,
-		"spacing": 8
+		"spacing": 8,
+        "show-passive-items": true
 	},
 
 	/*------------Clock------------------*/

@@ -66,6 +66,17 @@ tooltip label {
     transition: all 0.3s ease-in-out;
 }
 
+#workspaces button.special {
+    font-weight: bold;
+    padding: 0px 8px;
+    margin: 0px 3px;
+    border-radius: 18px;
+    color: @foreground-alt;
+    background: @color1;
+    transition: all 0.3s ease-in-out;
+}
+
+
 #workspaces button.active {
     font-weight: bold;
     background-color: @color4;
