@@ -34,3 +34,7 @@ element-icon {
     size: 229px 540px;
     horizontal-align: 0;
 }
+configuration { 
+    show-icons: true;
+}
+
