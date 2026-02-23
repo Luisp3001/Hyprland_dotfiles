@@ -24,8 +24,8 @@ wall_selection=$(ls "$wall_dir" | while read -r A; do echo -en "$A\x00icon\x1f$c
 
 # Establecer el fondo de pantalla seleccionado y ejecutar el script de pywal
 if [ -n "$wall_selection" ]; then
-	swww img "$wall_dir/$wall_selection" -t grow --transition-duration 1 --transition-fps 75
-	sleep 0.2
+	swww img "$wall_dir/$wall_selection" -t any --transition-fps 144
+	sleep 3
 	~/.config/hypr/scripts_hypr/./setwall_waypaper.sh
 	exit 0
 else

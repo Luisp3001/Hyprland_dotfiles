@@ -3,23 +3,25 @@
 	"layer": "top",
 	"position": "top",
 	"spacing": 0,
-	"height": 35,
-	"margin-top": 5,
+	"height": 48,
+	"margin-top": 0,
 	"margin-right": 0,
 	"margin-bottom": 0,
 	"margin-left": 0,
+    "reload_style_on_change": true,
 	/*----------Modules Left----------------*/
 	"modules-left": [
 		"custom/launcher",
-		"custom/playerctl#backward",
-		"custom/playerctl#play",
-		"custom/playerctl#foward",
-		"custom/playerlabel",
-        	"custom/cava"
+        "hyprland/workspaces",
+		"custom/cava"
 	],
 	/*----------Modules Center--------------*/
 	"modules-center": [
-		"hyprland/workspaces"
+        "custom/bongo-cat",
+        "custom/playerlabel",
+        "custom/playerctl#backward",
+		"custom/playerctl#play",
+		"custom/playerctl#foward"
 	],
 	/*----------Modules Center--------------*/
 	"modules-right": [
@@ -27,7 +29,7 @@
 		"battery",
 		"pulseaudio",
 		"network",
-        	"custom/swaync",
+        "custom/swaync",
 		"clock"
 	],
 
@@ -73,21 +75,27 @@
 	},
 
     /*---------------Playerctl---------------*/
-	"custom/playerctl#backward": {
-		"format": "󰙣 ",
-		"on-click": "playerctl --player=spotify previous",
-		"on-scroll-down": "wpctl set-volume @DEFAULT_SINK@ 5%-",
-		"on-scroll-up": "wpctl set-volume @DEFAULT_SINK@ 5%+",
-		"tooltip": false
-	},
-	"custom/playerctl#foward": {
-		"format": "󰙡 ",
-		"on-click": "playerctl --player=spotify next",
-		"on-scroll-down": "wpctl set-volume @DEFAULT_SINK@ 5%-",
-		"on-scroll-up": "wpctl set-volume @DEFAULT_SINK@ 5%+",
-		"tooltip": false
-	},
-	"custom/playerctl#play": {
+"custom/playerctl#backward": {
+    "exec": "playerctl -p spotify status 2>/dev/null && echo",
+    "format": "󰙣 ",
+    "interval": 1,
+    "on-click": "playerctl --player=spotify previous",
+    "on-scroll-down": "wpctl set-volume @DEFAULT_SINK@ 5%-",
+    "on-scroll-up": "wpctl set-volume @DEFAULT_SINK@ 5%+",
+    "tooltip": false
+},
+
+"custom/playerctl#foward": {
+    "exec": "playerctl -p spotify status 2>/dev/null",
+    "format": "󰙡 ",
+    "interval": 1,
+    "on-click": "playerctl --player=spotify next",
+    "on-scroll-down": "wpctl set-volume @DEFAULT_SINK@ 5%-",
+    "on-scroll-up": "wpctl set-volume @DEFAULT_SINK@ 5%+",
+    "tooltip": false
+},
+
+    "custom/playerctl#play": {
 		"exec": "playerctl --player=spotify metadata --format '{\"text\": \"{{artist}} - {{markup_escape(title)}}\", \"tooltip\": \"{{playerName}} : {{markup_escape(title)}}\", \"alt\": \"{{status}}\", \"class\": \"{{status}}\"}' -F",
 		"format": "{icon}",
 		"format-icons": {
@@ -157,10 +165,10 @@
 
 /*--------------------Cava----------------------*/
     "custom/cava":{
-        "format": {},
+        "format": { },
         "exec": "~/.config/waybar/cava.sh",
         "tooltip": false
-    }
+    },
 
 }
 

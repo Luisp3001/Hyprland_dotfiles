@@ -8,13 +8,13 @@
 
 /*------------Defining Colors---------------*/
 @import url("/home/luisp/.cache/wal/colors-waybar.css");
-
+@import url("bongo-cat-frame.css");
 /*------------Global Properties-----------------*/
 * {
     border: none;
     border-radius: 0px;
-    font-family: "JetbrainsMono Nerd Font Propo";
-    font-style: italic;
+    font-family: "JetbrainsMono Nerd Fonts Mono", monospace;
+    font-style: normal;
     font-size: 14px;
     min-height: 0;
 }
@@ -89,7 +89,7 @@ tooltip label {
 
 #workspaces button:hover {
     font-weight: bold;
-    background-color: @color1;
+    background-color: @color10;
     color: @foreground-alt;
     border-radius: 18px;
     min-width: 50px;
@@ -163,26 +163,28 @@ tooltip label {
 }
 #custom-playerctl.backward {
     color: @foreground;
-    border-radius: 18px 0px 0px 18px;
-    padding-left: 12px;
-    margin-left: 7px;
+    border-radius: 0px 0px 0px 0px;
+    margin-top: 0px;
+    padding-left: 15px;
 }
 #custom-playerctl.play {
     color: @foreground;
-    padding: 0 5px;
+    margin-top: 0px;
+    padding: 0 10px;
 }
 #custom-playerctl.foward {
     color: @foreground;
-    border-radius: 0px 18px 18px 0px;
-    padding-right: 7px;
-    margin-right: 7px
+    border-radius: 0px 0px 25px 0px;
+    margin-top: 0px;
+    padding-right: 5px;
 }
 #custom-playerlabel {
     background: @background;
     color: @color4;
-    padding: 5px 15px 5px 15px;
-    border-radius: 18px;
-    margin: 5px 0;
+    padding: 8px 20px;
+    border-radius: 0px 0px 0px 25px;
+    margin-top: 0px;
+    margin-bottom: 5px;
     font-weight: bold;
 }
 
@@ -205,3 +207,6 @@ tooltip label {
     border-radius: 18px;
     margin: 5px;
 }
+
+
+

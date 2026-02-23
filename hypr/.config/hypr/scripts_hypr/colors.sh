@@ -26,6 +26,8 @@ COLOR_FG=${COLORES[15]}
 COLOR_SEL=${COLORES[1]}
 COLOR_ACT=${COLORES[2]}
 COLOR_URG=${COLORES[5]}
+COLOR_BORDER=${COLORES[6]}
+COLOR_BORDER_ALT=${COLORES[3]}
 
 # 4. Generar el archivo de salida usando un 'heredoc' (<< EOF)
 # Esto permite escribir bloques de texto de varias líneas, sustituyendo las variables.
@@ -37,6 +39,8 @@ cat << EOF > "$ARCHIVO_SALIDA"
     selected:        $COLOR_SEL;
     active:          $COLOR_ACT;
     urgent:          $COLOR_URG;
+    border:          $COLOR_BORDER;
+    border-alt:      $COLOR_BORDER_ALT;
 }
 EOF
 
