@@ -1,6 +1,7 @@
 # Hyprland_dotfiles
 Archivos de configuración que uso en mi sistema de Arch+Hyprland
 
+![Hyprland_dotfiles](images/image1.png "Escritorio")
 
 ![Hyprland_dotfiles](images/image2.png "Rofi")
 
