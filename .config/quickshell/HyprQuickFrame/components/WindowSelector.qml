@@ -33,17 +33,28 @@ Item {
     id: root
 
     property var monitor: Hyprland.focusedMonitor
-    property var workspace: monitor?.activeWorkspace
-    property var windows: workspace?.toplevels ?? []
 
-    signal checkHover(real mouseX, real mouseY)
-    signal regionSelected(real x, real y, real width, real height)
+    // Use global toplevels filtered by the active workspace instead of
+    // workspace.toplevels, which can be incomplete or stale.
+    property var windows: {
+        let result = [];
+        if (!root.monitor || !root.monitor.activeWorkspace) return result;
+        let ws = root.monitor.activeWorkspace;
+        let all = Hyprland.toplevels.values;
+        for (let i = 0; i < all.length; i++) {
+            if (all[i].workspace === ws)
+                result.push(all[i]);
+        }
+        return result;
+    }
+
+    signal regionSelected(real x, real y, real width, real height)  
     property alias pressed: mouseArea.pressed
 
     property real mouseX: 0
     property real mouseY: 0
-    onMouseXChanged: checkHover(mouseX, mouseY)
-    onMouseYChanged: checkHover(mouseX, mouseY)
+    onMouseXChanged: _doHoverCheck()
+    onMouseYChanged: _doHoverCheck()
       
     property real dimOpacity: 0.6  
     property real borderRadius: 10.0  
@@ -57,12 +68,72 @@ Item {
     property real selectionHeight: 0  
       
     property bool animateSelection: true
-    property bool globalAnimations: true
 
-    Behavior on selectionX { enabled: root.animateSelection && root.globalAnimations; SpringAnimation { spring: 4; damping: 0.4 } }
-    Behavior on selectionY { enabled: root.animateSelection && root.globalAnimations; SpringAnimation { spring: 4; damping: 0.4 } }
-    Behavior on selectionHeight { enabled: root.animateSelection && root.globalAnimations; SpringAnimation { spring: 4; damping: 0.4 } }
-    Behavior on selectionWidth { enabled: root.animateSelection && root.globalAnimations; SpringAnimation { spring: 4; damping: 0.4 } }  
+    // Refresh toplevel IPC data on load so positions/sizes are current
+    Component.onCompleted: {
+        Hyprland.refreshToplevels();
+    }
+
+    // Centralized hover check: iterates all windows in one pass and
+    // resets the selection when the cursor is outside every window.
+    function _doHoverCheck() {
+        if (!root.monitor || !root.monitor.lastIpcObject)
+            return;
+
+        const mx = root.mouseX;
+        const my = root.mouseY;
+        const monitorX = root.monitor.lastIpcObject.x;
+        const monitorY = root.monitor.lastIpcObject.y;
+        
+        let bestWin = null;
+
+        for (let i = 0; i < root.windows.length; i++) {
+            const win = root.windows[i];
+            if (!win.lastIpcObject) continue;
+
+            const wx = win.lastIpcObject.at[0] - monitorX;
+            const wy = win.lastIpcObject.at[1] - monitorY;
+            const ww = win.lastIpcObject.size[0];
+            const wh = win.lastIpcObject.size[1];
+
+            if (mx >= wx && mx <= wx + ww && my >= wy && my <= wy + wh) {
+                if (!bestWin) {
+                    bestWin = win;
+                } else {
+                    const bestIpc = bestWin.lastIpcObject;
+                    const currIpc = win.lastIpcObject;
+                    
+                    // Priority 1: Floating windows are on top of tiled windows
+                    if (currIpc.floating && !bestIpc.floating) {
+                        bestWin = win;
+                    } else if (currIpc.floating === bestIpc.floating) {
+                        // Priority 2: Most recently focused windows (smaller focusHistoryID) are on top
+                        if (currIpc.focusHistoryID < bestIpc.focusHistoryID) {
+                            bestWin = win;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (bestWin) {
+            const bestIpc = bestWin.lastIpcObject;
+            selectionX = bestIpc.at[0] - monitorX;
+            selectionY = bestIpc.at[1] - monitorY;
+            selectionWidth = bestIpc.size[0];
+            selectionHeight = bestIpc.size[1];
+        } else {
+            selectionX = 0;
+            selectionY = 0;
+            selectionWidth = 0;
+            selectionHeight = 0;
+        }
+    }
+
+    Behavior on selectionX { enabled: root.animateSelection; SpringAnimation { spring: 4; damping: 0.4 } }
+    Behavior on selectionY { enabled: root.animateSelection; SpringAnimation { spring: 4; damping: 0.4 } }
+    Behavior on selectionHeight { enabled: root.animateSelection; SpringAnimation { spring: 4; damping: 0.4 } }
+    Behavior on selectionWidth { enabled: root.animateSelection; SpringAnimation { spring: 4; damping: 0.4 } }  
       
 
     ShaderEffect {  
@@ -83,51 +154,20 @@ Item {
         fragmentShader: root.fragmentShader  
     }  
 
-    Repeater {
-        model: root.windows
-
-        Item {
-            required property var modelData
-
-            Connections {
-                target: root
-
-                function onCheckHover(mouseX, mouseY) {
-                    if (!root.monitor || !root.monitor.lastIpcObject || !modelData.lastIpcObject)
-                        return;
-
-                    const monitorX = root.monitor.lastIpcObject.x;
-                    const monitorY = root.monitor.lastIpcObject.y;
-                    
-                    const windowX = modelData.lastIpcObject.at[0] - monitorX;
-                    const windowY = modelData.lastIpcObject.at[1] - monitorY;
-                    
-                    const width = modelData.lastIpcObject.size[0];
-                    const height = modelData.lastIpcObject.size[1];
-
-                    if (mouseX >= windowX && mouseX <= windowX + width && mouseY >= windowY && mouseY <= windowY + height) {
-                        selectionX = windowX;
-                        selectionY = windowY;
-                        selectionWidth = width;
-                        selectionHeight = height;
-                    }
-                }
-            }
-        }
-    }
-      
     MouseArea {  
         id: mouseArea  
         anchors.fill: parent  
         z: 3
         hoverEnabled: true
-
+          
         onPositionChanged: (mouse) => { 
-            root.checkHover(mouse.x, mouse.y);
+            root.mouseX = mouse.x;
+            root.mouseY = mouse.y;
         }  
           
         onReleased: (mouse) => {  
-            if (mouse.x >= root.selectionX && mouse.x <= root.selectionX + root.selectionWidth &&
+            if (root.selectionWidth > 0 && root.selectionHeight > 0 &&
+                mouse.x >= root.selectionX && mouse.x <= root.selectionX + root.selectionWidth &&
                 mouse.y >= root.selectionY && mouse.y <= root.selectionY + root.selectionHeight) {
                 root.regionSelected(  
                     Math.round(root.selectionX),  

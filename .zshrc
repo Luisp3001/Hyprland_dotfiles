@@ -121,3 +121,9 @@ export PATH=$PATH:/home/lfpt3001/.spicetify
 export PATH="$HOME/.spicetify/spicetify:$PATH"
 export PATH="/home/lfpt3001/.cargo/bin:$PATH"
 export SUDO_EDITOR="nvim"
+export PATH=$PATH:~/.spicetify
+
+# Pyenv
+export PYENV_ROOT="$HOME/.pyenv"
+[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init -)"

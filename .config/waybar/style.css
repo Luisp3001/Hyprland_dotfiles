@@ -106,7 +106,7 @@ tooltip label {
 }
 
 /*---------------Tray, Clock, Playerctl, Battery, Cpu, Temperature, Colorpicker, Memory, Idle_inhibitor----------------------*/
-#tray, #pulseaudio, #network, #clock, #custom-swaync{
+#tray, #pulseaudio, #network, #clock, #custom-notifications{
     color: @foreground;
     background: @background;
     font-weight: bold;

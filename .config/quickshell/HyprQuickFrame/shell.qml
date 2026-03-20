@@ -87,9 +87,16 @@ FreezeScreen {
             minX = Math.min(minX, m.lastIpcObject.x);
             minY = Math.min(minY, m.lastIpcObject.y);
         }
-        const scale = hyprlandMonitor.scale;
-        const monitorX = root.hyprlandMonitor.lastIpcObject.x;
-        const monitorY = root.hyprlandMonitor.lastIpcObject.y;
+
+        const monitor = hyprlandMonitor || Hyprland.focusedMonitor;
+        if (!monitor) {
+            console.error("No monitor found for crop calculation!");
+            return { cropX: 0, cropY: 0, scaledWidth: 0, scaledHeight: 0 };
+        }
+
+        const scale = monitor.scale;
+        const monitorX = monitor.lastIpcObject.x;
+        const monitorY = monitor.lastIpcObject.y;
         const globalX = Math.round((x + monitorX) * scale);
         const globalY = Math.round((y + monitorY) * scale);
         return {
@@ -233,6 +240,7 @@ FreezeScreen {
             if (!monitor)
                 return ;
 
+            hyprlandMonitor = monitor;
             for (const screen of Quickshell.screens) {
                 if (screen.name === monitor.name)
                     activeScreen = screen;
@@ -241,7 +249,7 @@ FreezeScreen {
         }
 
         target: Hyprland
-        enabled: activeScreen === null
+        enabled: activeScreen === null || hyprlandMonitor === null
     }
 
     Shortcut {

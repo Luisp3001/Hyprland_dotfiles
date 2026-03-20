@@ -3,33 +3,25 @@
 	"layer": "top",
 	"position": "top",
 	"spacing": 0,
-	"height": 48,
+	"height": 50,
 	"margin-top": 0,
 	"margin-right": 0,
 	"margin-bottom": 2,
 	"margin-left": 0,
+    "exclusive": true,
+    "no-center": true,
     "reload_style_on_change": true,
 	/*----------Modules Left----------------*/
 	"modules-left": [
-		"custom/launcher",
+        "custom/launcher",
         "hyprland/workspaces",
 		"custom/cava"
-	],
-	/*----------Modules Center--------------*/
-	"modules-center": [
-        "custom/bongo-cat",
-        "custom/playerlabel",
-        "custom/playerctl#backward",
-		"custom/playerctl#play",
-		"custom/playerctl#foward"
 	],
 	/*----------Modules Right--------------*/
 	"modules-right": [
 		"tray",
         "custom/polycat",
-		"pulseaudio",
 		"network",
-        "custom/swaync",
 		"clock"
 	],
 
@@ -44,26 +36,11 @@
 
 	/*-----------SwayNC----------------*/
 
-	"custom/swaync": {
-		"tooltip": true,
-		"tooltip-format": "Left Click: Launch Notification Center\nRight Click: Do not Disturb",
-		"format": "{} {icon} ",
-		"format-icons": {
-			"notification": "<span foreground='#e67e80'><sup></sup></span>",
-			"none": "",
-			"dnd-notification": "<span foreground='#e67e80'><sup></sup></span>",
-			"dnd-none": "",
-			"inhibited-notification": "<span foreground='#e67e80'><sup></sup></span>",
-			"inhibited-none": "",
-			"dnd-inhibited-notification": "<span foreground='#e67e80'><sup></sup></span>",
-			"dnd-inhibited-none": ""
-		},
-		"return-type": "json",
-		"exec-if": "which swaync-client",
-		"exec": "swaync-client -swb",
-		"on-click": "sleep 0.1 && swaync-client -t -sw",
-		"on-click-right": "swaync-client -d -sw",
-		"escape": true
+	"custom/notifications": {
+        "format": "󰂚",
+        "tooltip": false,
+        "on-click": "qs ipc call shell toggleNotifCenter"
+		
 	},
 
 

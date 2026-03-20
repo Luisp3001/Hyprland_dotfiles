@@ -5,17 +5,50 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 
-ShellRoot {
+// WallpaperPicker – standalone component (no ShellRoot).
+// Emits closed() instead of calling Qt.quit().
+QtObject {
     id: root
 
-    PanelWindow {
-        id: window
+    signal closed()
+    property bool active: false
+
+    onActiveChanged: {
+        if (active) {
+            // Reset state for fresh open
+            pickerWindow.initialFocusSet = false;
+            pickerWindow.processFinished = false;
+            pickerWindow.targetWallName = "";
+            pickerWindow.targetWallIndex = 0;
+            currentWallProcess.running = true;
+        }
+    }
+
+    property var currentWallProcess: Process {
+        command: ["bash", "-c", "swww query | grep 'currently displaying' | sed -E 's/.*image: (.*)/\\1/' || true"]
+        stdout: SplitParser {
+            onRead: data => {
+                let parts = data.trim().split('/');
+                let name = parts[parts.length - 1];
+                if (name) {
+                    pickerWindow.targetWallName = name;
+                }
+            }
+        }
+        onExited: {
+            pickerWindow.processFinished = true;
+            pickerWindow.tryFocus();
+        }
+    }
+
+    property var pickerWindow: PanelWindow {
         color: "transparent"
-        
+        visible: root.active
+
         WlrLayershell.namespace: "wallpaper-picker"
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
-        
+
         anchors {
             top: true
             bottom: true
@@ -27,30 +60,51 @@ ShellRoot {
         focusable: true
 
         // -------------------------------------------------------------------------
-        // PROPERTIES & IPC RECEIVER
+        // PROPERTIES
         // -------------------------------------------------------------------------
-        property string widgetArg: ""
         property int targetWallIndex: 0
         property bool initialFocusSet: false
+        property string targetWallName: ""
+        property bool processFinished: false
 
-        onWidgetArgChanged: {
-            let idx = parseInt(widgetArg);
-            if (!isNaN(idx)) {
-                targetWallIndex = idx;
-                tryFocus();
-            }
-        }
+        readonly property string homeDir: "file://" + Quickshell.env("HOME")
+        readonly property string thumbDir: homeDir + "/.cache/wallpaper"
+        readonly property string srcDir: Quickshell.env("HOME") + "/dotfiles/wallpaper"
+
+        readonly property string swwwCommand: "swww img '%1' --transition-type %2 --transition-pos 0.5,0.5 --transition-fps 144 --transition-duration 2"
+
+        readonly property var transitions: ["wave"]
+
+        readonly property int itemWidth: 300
+        readonly property int itemHeight: 420
+        readonly property int borderWidth: 3
+        readonly property int wpSpacing: 15
+        readonly property real skewFactor: -0.35
 
         function tryFocus() {
-            if (!initialFocusSet) {
-                // Wait until the model has loaded enough items to actually reach our target
-                if (view.count > targetWallIndex) {
+            if (!initialFocusSet && processFinished) {
+                let foundIndex = -1;
+
+                if (targetWallName !== "" && targetWallIndex === 0) {
+                    for (let i = 0; i < view.count; i++) {
+                        let fname = folderModel.get(i, "fileName");
+                        if (fname === targetWallName || fname === "000_" + targetWallName) {
+                            foundIndex = i;
+                            break;
+                        }
+                    }
+                }
+
+                if (foundIndex !== -1) {
+                    view.currentIndex = foundIndex;
+                    view.positionViewAtIndex(foundIndex, ListView.Center);
+                    initialFocusSet = true;
+                } else if (targetWallIndex > 0 && view.count > targetWallIndex) {
                     view.currentIndex = targetWallIndex;
                     view.positionViewAtIndex(targetWallIndex, ListView.Center);
                     initialFocusSet = true;
                 } else if (folderModel.status === FolderListModel.Ready && view.count > 0) {
-                    // Fallback: If the folder completely finished loading but the index is somehow out of bounds
-                    let safeIndex = Math.max(0, view.count - 1);
+                    let safeIndex = Math.min(targetWallIndex, view.count - 1);
                     view.currentIndex = safeIndex;
                     view.positionViewAtIndex(safeIndex, ListView.Center);
                     initialFocusSet = true;
@@ -58,24 +112,10 @@ ShellRoot {
             }
         }
 
-        readonly property string homeDir: "file://" + Quickshell.env("HOME")
-        readonly property string thumbDir: homeDir + "/.cache/wallpaper"
-        readonly property string srcDir: Quickshell.env("HOME") + "/dotfiles/wallpaper"
-
-        readonly property string swwwCommand: "swww img '%1' --transition-type %2 --transition-pos 0.5,0.5 --transition-fps 144 --transition-duration 3"
-        
-        readonly property var transitions: ["wave"]
-
-        readonly property int itemWidth: 300
-        readonly property int itemHeight: 420
-        readonly property int borderWidth: 3
-        readonly property int spacing: 15
-        readonly property real skewFactor: -0.35
-
         Shortcut { sequence: "Left"; onActivated: view.decrementCurrentIndex() }
         Shortcut { sequence: "Right"; onActivated: view.incrementCurrentIndex() }
         Shortcut { sequence: "Return"; onActivated: { if (view.currentItem) view.currentItem.pickWallpaper() } }
-        Shortcut { sequence: "Escape"; onActivated: Quickshell.execDetached(Qt.quit()) }
+        Shortcut { sequence: "Escape"; onActivated: root.closed() }
 
         // -------------------------------------------------------------------------
         // CONTENT
@@ -83,40 +123,37 @@ ShellRoot {
         ListView {
             id: view
             anchors.fill: parent
-            anchors.margins: 0 
-            
-            spacing: window.spacing
-            orientation: ListView.Horizontal
-            clip: false 
+            anchors.margins: 0
 
-            // Pre-load items off-screen so they don't block the thread as they enter the view
+            spacing: pickerWindow.wpSpacing
+            orientation: ListView.Horizontal
+            clip: false
+
             cacheBuffer: 2000
 
             highlightRangeMode: ListView.StrictlyEnforceRange
-            preferredHighlightBegin: (width / 2) - (window.itemWidth / 2)
-            preferredHighlightEnd: (width / 2) + (window.itemWidth / 2)
-            
-            // Reset back to standard speed for snappy manual keyboard navigation
-            highlightMoveDuration: window.initialFocusSet ? 300 : 0
+            preferredHighlightBegin: (width / 2) - (pickerWindow.itemWidth / 2)
+            preferredHighlightEnd: (width / 2) + (pickerWindow.itemWidth / 2)
+
+            highlightMoveDuration: pickerWindow.initialFocusSet ? 300 : 0
 
             focus: true
-            
-            onCountChanged: window.tryFocus()
+
+            onCountChanged: pickerWindow.tryFocus()
 
             model: FolderListModel {
                 id: folderModel
-                folder: window.thumbDir
+                folder: pickerWindow.thumbDir
                 nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif"]
                 showDirs: false
-                sortField: FolderListModel.Name 
-                
-                // Re-check focus when the model's loading status updates
-                onStatusChanged: window.tryFocus()
+                sortField: FolderListModel.Name
+
+                onStatusChanged: pickerWindow.tryFocus()
             }
 
             delegate: Item {
                 id: delegateRoot
-                width: window.itemWidth
+                width: pickerWindow.itemWidth
                 height: view.height
 
                 readonly property bool isCurrent: ListView.isCurrentItem
@@ -130,21 +167,21 @@ ShellRoot {
                         cleanName = cleanName.substring(4)
                     }
 
-                    const originalFile = window.srcDir + "/" + cleanName
-                    
+                    const originalFile = pickerWindow.srcDir + "/" + cleanName
+
                     if (isVideo) {
-                         const finalCmd = window.mpvCommand.arg(originalFile)
+                         const finalCmd = pickerWindow.mpvCommand.arg(originalFile)
                          Quickshell.execDetached(["bash", "-c", finalCmd])
                     } else {
-                         const randomTransition = window.transitions[Math.floor(Math.random() * window.transitions.length)]
-                         const finalCmd = window.swwwCommand.arg(originalFile).arg(randomTransition)
-                         Quickshell.execDetached(["bash", "-c", "pkill mpvpaper; " + finalCmd])
+                         const randomTransition = pickerWindow.transitions[Math.floor(Math.random() * pickerWindow.transitions.length)]
+                         const finalCmd = pickerWindow.swwwCommand.arg(originalFile).arg(randomTransition)
+                         Quickshell.execDetached(["bash", "-c", finalCmd])
                     }
-                    
-                    // Update colors and close the wallpaper picker
+
+                    // Update colors
                     const postCmd = "sleep 2 && /home/luisp/.config/hypr/scripts_hypr/update_color.sh"
                     Quickshell.execDetached(["bash", "-c", postCmd])
-                    Qt.quit()
+                    root.closed()
                 }
 
                 MouseArea {
@@ -157,8 +194,8 @@ ShellRoot {
 
                 Item {
                     anchors.centerIn: parent
-                    width: window.itemWidth
-                    height: window.itemHeight
+                    width: pickerWindow.itemWidth
+                    height: pickerWindow.itemHeight
 
                     scale: delegateRoot.isCurrent ? 1.15 : 0.95
                     opacity: delegateRoot.isCurrent ? 1.0 : 0.6
@@ -167,7 +204,7 @@ ShellRoot {
                     Behavior on opacity { NumberAnimation { duration: 500 } }
 
                     transform: Matrix4x4 {
-                        property real s: window.skewFactor
+                        property real s: pickerWindow.skewFactor
                         matrix: Qt.matrix4x4(1, s, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
                     }
 
@@ -176,60 +213,58 @@ ShellRoot {
                         source: fileUrl
                         sourceSize: Qt.size(1, 1)
                         fillMode: Image.Stretch
-                        visible: true 
-                        
-                        // Load from disk on a background thread to prevent UI freezing
+                        visible: true
+
                         asynchronous: true
                     }
 
                     Item {
                         anchors.fill: parent
-                        anchors.margins: window.borderWidth 
-                        
+                        anchors.margins: pickerWindow.borderWidth
+
                         Rectangle { anchors.fill: parent; color: "black" }
                         clip: true
 
                         Image {
                             anchors.centerIn: parent
-                            anchors.horizontalCenterOffset: -50 
-                            
-                            width: parent.width + (parent.height * Math.abs(window.skewFactor)) + 50
+                            anchors.horizontalCenterOffset: -50
+
+                            width: parent.width + (parent.height * Math.abs(pickerWindow.skewFactor)) + 50
                             height: parent.height
-                            
+
                             fillMode: Image.PreserveAspectCrop
                             source: fileUrl
-                            
-                            // Load from disk on a background thread to prevent UI freezing
+
                             asynchronous: true
 
                             transform: Matrix4x4 {
-                                property real s: -window.skewFactor
+                                property real s: -pickerWindow.skewFactor
                                 matrix: Qt.matrix4x4(1, s, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
                             }
                         }
-                        
+
                         Rectangle {
                             visible: delegateRoot.isVideo
                             anchors.top: parent.top
                             anchors.right: parent.right
                             anchors.margins: 10
-                            
+
                             width: 32
                             height: 32
                             radius: 6
-                            color: "#60000000" 
-                            
+                            color: "#60000000"
+
                             transform: Matrix4x4 {
-                                property real s: -window.skewFactor
+                                property real s: -pickerWindow.skewFactor
                                 matrix: Qt.matrix4x4(1, s, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
                             }
-                            
+
                             Canvas {
                                 anchors.fill: parent
-                                anchors.margins: 8 
+                                anchors.margins: 8
                                 onPaint: {
                                     var ctx = getContext("2d");
-                                    ctx.fillStyle = "#EEFFFFFF"; 
+                                    ctx.fillStyle = "#EEFFFFFF";
                                     ctx.beginPath();
                                     ctx.moveTo(4, 0);
                                     ctx.lineTo(14, 8);
