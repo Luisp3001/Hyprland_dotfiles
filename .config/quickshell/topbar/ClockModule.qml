@@ -61,7 +61,7 @@ Item {
         MouseArea {
             anchors.fill: parent
             onClicked: shell.calendarVisible = !shell.calendarVisible
-            onEntered: if (!shell.calendarVisible) pill.opacity = 0.8
+            onEntered: if (!shell.calendarVisible) pill.opacity = 0.9
             onExited: pill.opacity = 1.0
             hoverEnabled: true
             

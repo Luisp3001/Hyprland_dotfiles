@@ -12,78 +12,6 @@ QtObject {
 
     signal newNotification(var entry)
 
-    // ── Persistence ──────────────────────────────────────────────────────
-    readonly property string cacheFile: Quickshell.env("HOME") + "/.cache/quickshell/notifications.json"
-
-    property bool _loaded: false
-
-    property var loadFile: FileView {
-        id: _cacheFileView
-        path: historyModel.cacheFile
-        onLoaded: historyModel.load()
-        onLoadFailed: (err) => {
-            historyModel._loaded = true;
-        }
-    }
-
-    // Timer for debounced saving
-    property var _saveTimer: Timer {
-        interval: 1000
-        onTriggered: historyModel._doSave()
-    }
-
-    function save() {
-        if (!historyModel._loaded) return;
-        _saveTimer.restart();
-    }
-
-    function _doSave() {
-        var data = [];
-        for (var i = 0; i < _model.count; i++) {
-            var item = _model.get(i);
-            if (!item) continue;
-            data.push({
-                notifId: item.notifId,
-                summary: item.summary,
-                body: item.body,
-                appName: item.appName,
-                appIcon: item.appIcon,
-                image: item.image,
-                urgency: item.urgency,
-                time: item.time
-            });
-        }
-        
-        var json = JSON.stringify(data);
-        
-        // Use FileView.setText for safe, direct writing (no shell argument limits)
-        _cacheFileView.setText(json);
-    }
-
-    function load() {
-        if (historyModel._loaded) return;
-        try {
-            var raw = _cacheFileView.text();
-            if (raw && raw.trim() !== "") {
-                var data = JSON.parse(raw);
-                if (Array.isArray(data)) {
-                    _model.clear();
-                    for (var i = 0; i < data.length; i++) {
-                        // Ensure we don't carry over stale notifRefs from saved JSON
-                        data[i].notifRef = null;
-                        _model.append(data[i]);
-                    }
-                }
-            }
-        } catch(e) { console.log("Error loading notifications:", e); }
-        historyModel._loaded = true;
-    }
-
-    Component.onCompleted: {
-        if (_cacheFileView.loaded) {
-            load();
-        }
-    }
 
     // ── Notification server (shared) ────────────────────────────────────
     required property var server
@@ -98,16 +26,27 @@ QtObject {
             notif.tracked = true;
 
             // Resolve app icon or image (unified logic)
-            function resolveIcon(icon) {
+            function resolveIcon(icon, isAppIcon) {
                 if (!icon) return "";
                 var s = icon.toString();
-                if (s !== "" && !s.startsWith("/") && !s.startsWith("file://") && !s.startsWith("image://")) {
-                    return "image://icon/" + s;
+                if (s === "") return "";
+                
+                // If it's already a full path or a special URI, use it directly
+                if (s.startsWith("/") || s.startsWith("file://") || s.startsWith("image://")) {
+                    return s;
                 }
-                return s;
+                
+                // Otherwise, treat as a themed icon name
+                return "image://icon/" + s;
             }
 
-            var sourceImage = resolveIcon(notif.image) || resolveIcon(notif.appIcon);
+            var sourceImage = resolveIcon(notif.image, false) || resolveIcon(notif.appIcon, true);
+            
+            // Debugging log if no image found for a known app
+            if (sourceImage === "" && notif.appName !== "") {
+                console.log("NotifHistoryModel: Warning - No icon resolved for app:", notif.appName, 
+                            "| appIcon hint:", notif.appIcon, "| image hint:", notif.image);
+            }
 
             var entry = {
                 notifId:  notif.id,

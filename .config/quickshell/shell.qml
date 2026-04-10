@@ -8,6 +8,7 @@ import "Wallpaper"
 import "HyprQuickFrame"
 import "notificationcenter"
 import "topbar"
+import "components"
 
 ShellRoot {
     id: shell
@@ -17,15 +18,31 @@ ShellRoot {
     property bool screenshotActive:    false
     property bool notifCenterVisible:  false
     property bool calendarVisible:     false
+    property bool powerMenuVisible:    false
+    property bool dndEnabled:          false
+
+    // ── Volume State ───────────────────────────────────────────────────
+    property real currentVolume: 0.5
+    property bool isMuted: false
+    property bool volumeVisible: false
+
+    onWallpaperVisibleChanged: {
+        if (!wallpaperVisible) {
+            gc();
+        }
+    }
 
     // ── Shared Notification Service ────────────────────────────────────
     property var notifServer: NotificationServer {
         actionsSupported: true
         keepOnReload: true
+        imageSupported: true
+        bodyImagesSupported: true
     }
 
     property var musicNotifHandler: NotificationHandler {
         server: shell.notifServer
+        dndEnabled: shell.dndEnabled
     }
 
     property var notifHistory: NotifHistoryModel {
@@ -103,12 +120,56 @@ ShellRoot {
         shell.parseColors();
     }
 
+    // ── Volume polling via wpctl ───────────────────────────────────────
+    property var volProcess: Process {
+        property string lastRaw: ""
+        command: ["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"]
+        stdout: SplitParser {
+            onRead: function(line) {
+                var muted = line.indexOf("[MUTED]") !== -1;
+                var match = line.match(/Volume:\s*([\d.]+)/);
+                if (!match) return;
+
+                var vol = parseFloat(match[1]);
+                var raw = line.trim();
+                if (raw !== volProcess.lastRaw) {
+                    volProcess.lastRaw = raw;
+                    shell.isMuted = muted;
+                    shell.currentVolume = vol;
+                    shell.volumeVisible = true;
+                    volumeHideTimer.restart();
+                }
+            }
+        }
+    }
+
+    Timer {
+        id: volPoll
+        interval: 100
+        running: true
+        repeat: true
+        onTriggered: {
+            if (!volProcess.running)
+                volProcess.running = true;
+        }
+    }
+
+    Timer {
+        id: volumeHideTimer
+        interval: 3000
+        onTriggered: shell.volumeVisible = false
+    }
+
     // ── IPC Handler ────────────────────────────────────────────────────
     // Usage from Hyprland keybinds:
     //   bind = SUPER, P, exec, qs ipc call shell toggleWallpaper
     //   bind = SUPER SHIFT, S, exec, qs ipc call shell launchScreenshot
     IpcHandler {
         target: "shell"
+
+        function lockScreen(): void {
+            Quickshell.execDetached(["qs", "-p", Quickshell.env("HOME") + "/.config/quickshell/components/Lock.qml"]);
+        }
 
         function toggleWallpaper(): void {
             shell.wallpaperVisible = !shell.wallpaperVisible;
@@ -124,6 +185,10 @@ ShellRoot {
 
         function clearNotifHistory(): void {
             shell.notifHistory.clearAll();
+        }
+
+        function togglePowerMenu(): void {
+            shell.powerMenuVisible = !shell.powerMenuVisible;
         }
     }
 
@@ -147,8 +212,8 @@ ShellRoot {
         anchors { top: true; bottom: true; left: true; right: true }
         visible: shell.notifCenterVisible
         exclusionMode: ExclusionMode.Ignore
-        WlrLayershell.layer: WlrLayer.Bottom
-        WlrLayershell.namespace: "quickshell" // Different namespace to avoid Hyprland layerrule conflicts
+        WlrLayershell.layer: WlrLayer.Top
+        WlrLayershell.namespace: "notificationcenter" // Different namespace to avoid Hyprland layerrule conflicts
         color: "transparent"
         
         MouseArea {
@@ -194,7 +259,9 @@ ShellRoot {
             server: shell.notifServer
             historyModel: shell.notifHistory
             notifCenterVisible: shell.notifCenterVisible
+            dndEnabled: shell.dndEnabled
             onToggleNotifCenter: () => shell.notifCenterVisible = !shell.notifCenterVisible
+            onDndEnabledChanged: shell.dndEnabled = mWidget.dndEnabled
         }
     }
 
@@ -241,14 +308,72 @@ ShellRoot {
     }
 
     // ── Wallpaper Picker (toggled via SUPER+P) ─────────────────────────
-    WallpaperPicker {
+    Loader {
         active: shell.wallpaperVisible
-        onClosed: shell.wallpaperVisible = false
+        sourceComponent: Component {
+            WallpaperPicker {
+                active: true
+                onClosed: shell.wallpaperVisible = false
+            }
+        }
     }
 
     // ── HyprQuickFrame / Screenshot Tool (SUPER+SHIFT+S) ──────────────
     ScreenshotTool {
         active: shell.screenshotActive
         onDone: shell.screenshotActive = false
+    }
+
+    // ── Power Menu (toggled via SUPER+X or IPC) ───────────────────────
+    PanelWindow {
+        anchors { top: true; bottom: true; left: true; right: true }
+        visible: shell.powerMenuVisible
+        exclusionMode: ExclusionMode.Ignore
+        WlrLayershell.layer: WlrLayer.Top
+        WlrLayershell.namespace: "power-menu"
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+        color: "transparent"
+
+        PowerMenu {
+            id: powerMenu
+            anchors.fill: parent
+            walColors: shell.walColors
+        }
+
+        onVisibleChanged: {
+            if (visible) {
+                powerMenu.open();
+            }
+        }
+
+        Connections {
+            target: powerMenu
+            function onVisibleChanged() {
+                if (!powerMenu.visible) {
+                    shell.powerMenuVisible = false;
+                }
+            }
+        }
+    }
+
+    // ── Volume Island (Overlay Layer) ──────────────────────────────────
+    PanelWindow {
+        anchors { top: true }
+        // Match core width to ensure centering matches MusicWidget
+        implicitWidth: 500 
+        implicitHeight: 80
+        // Position it dynamically below the MusicWidget
+        margins.top: mWidget.y + mWidget.height - 30
+        color: "transparent"
+        visible: shell.volumeVisible || volumeIsland.opacity > 0
+        exclusionMode: ExclusionMode.Ignore
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.namespace: "quickshell"
+
+        VolumeIsland {
+            id: volumeIsland
+            anchors.centerIn: parent
+            rootWidget: shell
+        }
     }
 }

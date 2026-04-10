@@ -1,4 +1,4 @@
-(cat ~/.cache/wal/sequences &)
+(cat ~/.cache/wal/sequences)
 # enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
 # Initialization code that may require console input (password prompts, [y/n]
 # confirmations, etc.) must go above this block; everything else may go below.
@@ -79,6 +79,9 @@ ZSH_THEME="robbyrussell"
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
 plugins=(git zsh-autosuggestions zsh-syntax-highlighting zsh-autocomplete sudo)
+
+zstyle ':autocomplete:*' add-semicolon no
+zstyle ':autocomplete:*' delay 3
 
 source $ZSH/oh-my-zsh.sh
 

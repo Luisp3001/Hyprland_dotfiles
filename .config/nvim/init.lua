@@ -65,6 +65,11 @@ require("lazy").setup({
   { "sphamba/smear-cursor.nvim",
     opts = {
         cursor_color = "#FFFFFF",
+        smear_between_buffers = true,
+        smear_between_neighbor_lines = true,
+        smear_insert_mode = true,
+        legacy_computing_symbols_support = true
+
     }
   },
   { "karb94/neoscroll.nvim",

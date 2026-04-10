@@ -12,6 +12,7 @@ QtObject {
     id: root
     required property var server
     property bool open: false
+    property bool dndEnabled: false
     signal closeRequested()
 
     // ── Wal colors ──────────────────────────────────────────────────────
@@ -26,7 +27,6 @@ QtObject {
 
     // ── Sub-components ───────────────────────────────────────────────────
     property var history: NotifHistoryModel { server: root.server }
-    property var metrics: SystemMetrics     { active: root.open }
 
     // ── Clock ────────────────────────────────────────────────────────────
     property string _clockTime: Qt.formatTime(new Date(), "hh:mm")
@@ -63,14 +63,13 @@ QtObject {
 
         Rectangle {
             id: mainBg
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.top: parent.top
+            anchors.fill: parent
             width: 780
             implicitHeight: horizontalLayout.implicitHeight + 40
             
             radius: 24
-            color:  Qt.alpha(root.walColors.special.background, 0.92)
-            border.color: Qt.rgba(root.walColors.colors.color3.r, root.walColors.colors.color3.g, root.walColors.colors.color3.b, 1)
+            color: Qt.tint(Qt.rgba(0, 0, 0, 0.35), Qt.alpha(root.walColors.special.background 0.15)) // Neutral translucency
+            border.color: Qt.rgba(root.walColors.colors.color3.r, root.walColors.colors.color3.g, root.walColors.colors.color3.b, 0.4)
             border.width: 1.5
             clip: true
 
@@ -88,7 +87,7 @@ QtObject {
                 radius: parent.radius
                 gradient: Gradient {
                     orientation: Gradient.Vertical
-                    GradientStop { position: 0.0; color: Qt.rgba(1,1,1,0.05) }
+                    GradientStop { position: 0.0; color: Qt.rgba(0,0,0,0.05) }
                     GradientStop { position: 0.35; color: "transparent" }
                     GradientStop { position: 1.0; color: Qt.rgba(0,0,0,0.10) }
                 }
@@ -105,20 +104,24 @@ QtObject {
 
                 // ── Left Side: Clock & Quick Actions ──
                 ColumnLayout {
-                    Layout.preferredWidth: 200
+                    Layout.preferredWidth: 280
                     Layout.fillHeight: true
-                    spacing: 15
+                    spacing: 12
 
                     ColumnLayout {
                         spacing: 2
-                            font.pixelSize: 36 // Increased font
+                        Text {
+                            text: root._clockTime
+                            color: root.walColors.special.foreground
+                            font.family: "JetBrains Mono"
+                            font.pixelSize: 36
                             font.weight: Font.Bold
                         }
                         Text {
                             text: root._clockDate
                             color: root.walColors.special.foreground
                             font.family: "JetBrains Mono"
-                            font.pixelSize: 12 // Increased font
+                            font.pixelSize: 12
                             opacity: 0.50
                         }
                     }
@@ -127,71 +130,29 @@ QtObject {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         radius: 18
-                        color: Qt.rgba(1, 1, 1, 0.05)
-                        border.color: Qt.rgba(1, 1, 1, 0.08)
+                        color: Qt.rgba(0, 0, 0, 0.20) // Darker inset background for contrast
+                        border.color: Qt.rgba(1, 1, 1, 0.05)
                         border.width: 1
-                        
+
                         QuickActions {
                             id: quickActionsInner
                             active: root.open
+                            dndEnabled: root.dndEnabled
                             anchors.centerIn: parent
                             width: parent.width - 20
                             walColors: root.walColors
+                            onDndEnabledChanged: root.dndEnabled = quickActionsInner.dndEnabled
                         }
                     }
                 }
 
-                // ── Middle: Metrics ──
-                ColumnLayout {
-                    Layout.preferredWidth: 140
+                // ── Vertical Divider ──
+                Rectangle {
                     Layout.fillHeight: true
-                    spacing: 8
-                    
-                    Text {
-                        text: "SYSTEM"
-                        color: root.walColors.special.foreground
-                        font.family: "JetBrains Mono"
-                        font.pixelSize: 12 // Increased font
-                        font.weight: Font.Bold
-                        opacity: 0.4
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        radius: 18
-                        color: Qt.rgba(1, 1, 1, 0.04)
-                        border.color: Qt.rgba(1, 1, 1, 0.08)
-                        border.width: 1
-                        
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 15
-
-                            // Mini Metric Helper
-                            component MiniMetric: ColumnLayout {
-                                property string label: ""
-                                property real value: 0
-                                property color barColor: root.walColors.colors.color2
-                                spacing: 4
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    Text { text: label; color: root.walColors.special.foreground; font.family: "JetBrains Mono"; font.pixelSize: 11; opacity: 0.5 } // Increased font
-                                    Item { Layout.fillWidth: true }
-                                    Text { text: Math.round(value) + "%"; color: barColor; font.family: "JetBrains Mono"; font.pixelSize: 12; font.weight: Font.Bold } // Increased font
-                                }
-                                Rectangle {
-                                    Layout.fillWidth: true; height: 3; radius: 1.5; color: Qt.rgba(1,1,1,0.08)
-                                    Rectangle { width: parent.width * value / 100; height: parent.height; radius: 1.5; color: barColor }
-                                }
-                            }
-
-                            MiniMetric { label: "CPU"; value: root.metrics.cpuPercent }
-                            MiniMetric { label: "RAM"; value: root.metrics.ramPercent; barColor: root.walColors.colors.color3 }
-                            MiniMetric { label: "DISK"; value: root.metrics.diskPercent; barColor: root.walColors.colors.color1 }
-                        }
-                    }
+                    Layout.topMargin: 10
+                    Layout.bottomMargin: 10
+                    width: 1
+                    color: Qt.rgba(1, 1, 1, 0.08)
                 }
 
                 // ── Right: Notifications ──

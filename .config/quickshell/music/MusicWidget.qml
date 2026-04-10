@@ -18,11 +18,14 @@ Item {
     property bool expanded: true
     // Expanded detail view (click to toggle)
     property bool detailExpanded: false
+    // EQ expanded state
+    property bool eqExpanded: false
     // ── Notification system ────────────────────────────────────────────
     required property var notifHandler
     property var server: null
     property var historyModel: null
     property bool notifCenterVisible: false
+    property bool dndEnabled: false
     property var onToggleNotifCenter: null
     property bool notificationVisible: false
     property int verticalPadding: 8
@@ -38,10 +41,7 @@ Item {
     property var notifRestoreTimer
     property var notifHandlerConnections
     property var notifHideTimer
-    // ── Volume Island ──────────────────────────────────────────────────
-    property real currentVolume: 0.5
-    property bool isMuted: false
-    property bool volumeVisible: false
+
     // ── Position tracking ──────────────────────────────────────────────
     property real trackPosition: 0
     property real trackLength: 0
@@ -71,9 +71,6 @@ Item {
             return 620;
 
         var h = pill.targetHeight;
-        if (root.volumeVisible)
-            h += volumePill.totalHeight;
-
         return h + root.verticalPadding + 15;
     }
     property real currentImplicitHeight: targetImplicitHeight
@@ -93,6 +90,7 @@ Item {
             collapseSequencer.start();
         } else {
             root.detailExpanded = true;
+            root.eqExpanded = false;
             root.trackPosition = root.spotifyPlayer.position;
             root.trackLength = root.spotifyPlayer.length;
         }
@@ -158,7 +156,7 @@ Item {
             return Math.min(300, Math.max(90, notifContent.notifColumn.implicitHeight + 30));
         }
         property real targetWidth: root.notificationVisible ? notifWidth : (root.detailExpanded ? expandedWidth : compactWidth)
-        property real targetHeight: root.notificationVisible ? notifHeight : (root.detailExpanded ? 230 : 45)
+        property real targetHeight: root.notificationVisible ? notifHeight : (root.detailExpanded ? (root.eqExpanded ? 480 : 280) : 45)
 
         antialiasing: true
         clip: true
@@ -187,7 +185,27 @@ Item {
         // Click to toggle expanded view / dismiss notification
         MouseArea {
             anchors.fill: parent
+
+            property real startY: 0
+            property bool isSwiping: false
+
+            onPressed: (mouse) => {
+                startY = mouse.y;
+                isSwiping = false;
+            }
+
+            onPositionChanged: (mouse) => {
+                if (root.notificationVisible && !isSwiping) {
+                    if (startY - mouse.y > 20) {
+                        isSwiping = true;
+                        root.notifHandler.dismiss();
+                    }
+                }
+            }
+
             onClicked: {
+                if (isSwiping) return;
+
                 if (root.notificationVisible) {
                     var invoked = false;
                     for (var i = 0; i < root.notifHandler.actions.length; i++) {
@@ -330,6 +348,8 @@ Item {
         historyModel: root.historyModel
         walColors: root.walColors
         centerOpen: root.notifCenterVisible
+        dndEnabled: root.dndEnabled
+        onDndEnabledChanged: root.dndEnabled = notifBubble.dndEnabled
         state: (!root.notificationVisible && (root.notifCenterVisible || (root.expanded && !root.detailExpanded))) ? "visible" : ""
         visible: state === "visible" || opacity > 0
         onClicked: {
@@ -364,19 +384,7 @@ Item {
 
     }
 
-    // ── Volume Dynamic Island ─────────────────────────────────────
-    VolumeIsland {
-        id: volumePill
 
-        rootWidget: root
-
-        anchors {
-            top: pill.bottom
-            topMargin: volumePill.gapHeight
-            horizontalCenter: parent.horizontalCenter
-        }
-
-    }
 
     notifOpacity: QtObject {
         property real value: 0
@@ -403,6 +411,7 @@ Item {
         interval: 350
         onTriggered: {
             root.detailExpanded = false;
+            root.eqExpanded = false;
         }
     }
 
@@ -476,47 +485,7 @@ Item {
         }
     }
 
-    volProcess: Process {
-        property string lastRaw: ""
 
-        command: ["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"]
-
-        stdout: SplitParser {
-            onRead: function(line) {
-                var muted = line.indexOf("[MUTED]") !== -1;
-                var match = line.match(/Volume:\s*([\d.]+)/);
-                if (!match)
-                    return ;
-
-                var vol = parseFloat(match[1]);
-                var raw = line.trim();
-                if (raw !== volProcess.lastRaw) {
-                    volProcess.lastRaw = raw;
-                    root.isMuted = muted;
-                    root.currentVolume = vol;
-                    root.volumeVisible = true;
-                    volumeHideTimer.restart();
-                }
-            }
-        }
-
-    }
-
-    volPoll: Timer {
-        interval: 100
-        running: true
-        repeat: true
-        onTriggered: {
-            if (!volProcess.running)
-                volProcess.running = true;
-
-        }
-    }
-
-    volumeHideTimer: Timer {
-        interval: 3000
-        onTriggered: root.volumeVisible = false
-    }
 
     detailOpacity: QtObject {
         property real value: 0

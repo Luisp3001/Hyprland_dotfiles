@@ -24,7 +24,7 @@
 }
 {
     "label" : "lock",
-    "action" : "swaync-client -t && sleep 1.5 && hyprlock",
+    "action" : "hyprlock",
     "text" : "Lock",
     "keybind" : "l"
 }

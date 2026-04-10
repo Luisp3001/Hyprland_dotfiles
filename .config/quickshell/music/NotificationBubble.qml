@@ -16,6 +16,7 @@ Rectangle {
     property bool centerOpen: false
     property var server: null
     property var historyModel: null
+    property bool dndEnabled: false
 
     signal clicked()
 
@@ -23,11 +24,11 @@ Rectangle {
     clip: true
     layer.enabled: true
     // Morph dimensions: from 45x45 bell → 340x620 vertical panel
-    width: centerOpen ? 400 : 45
-    height: centerOpen ? 610 : 45
+    width: centerOpen ? 480 : 45
+    height: centerOpen ? 600 : 45
     radius: centerOpen ? 22 : 300 // Use a high fixed radius during close for aggressive rounding
-    color: walColors ? (centerOpen ? Qt.alpha(walColors.special.background, 0.95) : walColors.special.background) : "#1c1e26"
-    border.color: active || centerOpen ? walColors.colors.color3 : "#3d4150"
+    color: walColors ? (centerOpen ? Qt.rgba(20/255, 20/255, 22/255, 1) : walColors.special.background) : "#1c1e26"
+    border.color: active || centerOpen ? Qt.alpha(walColors.colors.color3, 0.5) : "#3d4150"
     border.width: centerOpen ? 1.5 : 1
     opacity: 0
     scale: 0.8
@@ -110,7 +111,11 @@ Rectangle {
         Image {
             id: bellIcon
 
-            source: "../assets/icons/bell.svg"
+            source: {
+                if (root.dndEnabled) return "../assets/icons/bell_dnd.svg";
+                if (root.historyModel && root.historyModel.model.count > 0) return "../assets/icons/new_notification.svg";
+                return "../assets/icons/bell.svg";
+            }
             anchors.centerIn: parent
             sourceSize: Qt.size(20, 20)
             visible: false
@@ -154,22 +159,16 @@ Rectangle {
 
         // Sub-components
         property var history: root.historyModel
-        property var metrics
-
-        metrics: SystemMetrics {
-            active: root.centerOpen
-        }
 
         // Clock
         property string _clockTime: Qt.formatTime(new Date(), "hh:mm")
         property string _clockDate: Qt.formatDate(new Date(), "dddd, MMMM d")
 
-        width: 340
-        height: 620
-        anchors.top: parent.top
-        anchors.horizontalCenter: parent.horizontalCenter
-        opacity: root.centerOpen ? 1 : 0
-        visible: opacity > 0
+        width: parent.width - 20
+        height: parent.height - 20
+        anchors.centerIn: parent
+        opacity: root.centerOpen ? 0.8 : 0
+        visible: root.centerOpen ? true : false
         clip: true
         Timer {
             interval: 1000
@@ -213,7 +212,7 @@ Rectangle {
                     color: root.walColors.special.foreground
                     font.family: "JetBrains Mono"
                     font.pixelSize: 16
-                    opacity: 0.5
+                    opacity: 1
                 }
 
             }
@@ -224,10 +223,10 @@ Rectangle {
                 color: Qt.rgba(1, 1, 1, 0.08)
             }
 
-            // ── Quick Actions row ──
+            // ── Quick Actions grid + sliders ──
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 68
+                Layout.preferredHeight: quickActionsInner.implicitHeight + 24
                 radius: 16
                 color: Qt.rgba(1, 1, 1, 0.04)
                 border.color: Qt.rgba(1, 1, 1, 0.06)
@@ -235,143 +234,16 @@ Rectangle {
 
                 QuickActions {
                     id: quickActionsInner
-
                     active: root.centerOpen
+                    dndEnabled: root.dndEnabled
                     anchors.centerIn: parent
                     width: parent.width - 16
                     walColors: root.walColors
+                    onDndEnabledChanged: root.dndEnabled = quickActionsInner.dndEnabled
                 }
-
             }
 
-            // ── System Metrics (Circular layout) ──
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 120 // Increased vertical space
-                radius: 16
-                color: Qt.rgba(1, 1, 1, 0.04)
-                border.color: Qt.rgba(1, 1, 1, 0.06)
-                border.width: 1
 
-                RowLayout {
-                    width: parent.width - 48
-                    anchors.centerIn: parent
-                    spacing: 20
-
-                    CircularMetric {
-                        label: "CPU"
-                        value: expandedState.metrics.cpuPercent
-                    }
-
-                    CircularMetric {
-                        label: "RAM"
-                        value: expandedState.metrics.ramPercent
-                        barColor: root.walColors.colors.color3
-                    }
-
-                    CircularMetric {
-                        label: "DISK"
-                        value: expandedState.metrics.diskPercent
-                        barColor: root.walColors.colors.color4 || root.walColors.colors.color1
-                    }
-
-                }
-
-                // Circular Metric Component
-                component CircularMetric: ColumnLayout {
-                    property string label: ""
-                    property real value: 0
-                    property color barColor: root.walColors.colors.color2
-
-                    spacing: 8
-                    Layout.preferredWidth: 60
-
-                    Item {
-                        Layout.alignment: Qt.AlignHCenter
-                        width: 64 // Increased ring size
-                        height: 64
-
-                        // Background ring
-                        Shape {
-                            anchors.fill: parent
-                            smooth: true
-
-                            ShapePath {
-                                fillColor: "transparent"
-                                strokeColor: Qt.rgba(1, 1, 1, 0.1)
-                                strokeWidth: 5 // Thicker stroke
-                                capStyle: ShapePath.RoundCap
-
-                                PathAngleArc {
-                                    centerX: 32
-                                    centerY: 32
-                                    radiusX: 28
-                                    radiusY: 28
-                                    startAngle: -90
-                                    sweepAngle: 360
-                                }
-
-                            }
-
-                        }
-
-                        // Progress ring
-                        Shape {
-                            anchors.fill: parent
-                            smooth: true
-
-                            ShapePath {
-                                fillColor: "transparent"
-                                strokeColor: barColor
-                                strokeWidth: 5 // Thicker stroke
-                                capStyle: ShapePath.RoundCap
-
-                                PathAngleArc {
-                                    centerX: 32
-                                    centerY: 32
-                                    radiusX: 28
-                                    radiusY: 28
-                                    startAngle: -90
-                                    sweepAngle: (value / 100) * 360
-
-                                    Behavior on sweepAngle {
-                                        NumberAnimation {
-                                            duration: 600
-                                            easing.type: Easing.OutCubic
-                                        }
-
-                                    }
-
-                                }
-
-                            }
-
-                        }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: Math.round(value) + "%"
-                            color: root.walColors.special.foreground
-                            font.family: "JetBrains Mono"
-                            font.pixelSize: 12 // Increased font
-                            font.weight: Font.Bold
-                        }
-
-                    }
-
-                    Text {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: label
-                        color: root.walColors.special.foreground
-                        font.family: "JetBrains Mono"
-                        font.pixelSize: 13 // Increased font
-                        font.weight: Font.Bold
-                        opacity: 0.6
-                    }
-
-                }
-
-            }
 
             Rectangle {
                 Layout.fillWidth: true
@@ -388,7 +260,7 @@ Rectangle {
                     font.family: "JetBrains Mono"
                     font.pixelSize: 13 // Increased font
                     font.weight: Font.Bold
-                    opacity: 0.4
+                    opacity: 1
                 }
 
                 Item {
@@ -400,7 +272,7 @@ Rectangle {
                     color: root.walColors.colors.color2
                     font.family: "JetBrains Mono"
                     font.pixelSize: 13 // Increased font
-                    opacity: expandedState.history.model.count > 0 ? 0.8 : 0.3
+                    opacity: expandedState.history.model.count > 0 ? 1 : 0.3
 
                     MouseArea {
                         anchors.fill: parent
@@ -487,7 +359,7 @@ Rectangle {
                                 color: root.walColors.special.foreground
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: 11 // Increased font
-                                opacity: 0.55
+                                opacity: 1
                                 elide: Text.ElideRight
                                 maximumLineCount: 1
                                 clip: true
@@ -507,7 +379,7 @@ Rectangle {
                                 color: root.walColors.special.foreground
                                 anchors.centerIn: parent
                                 font.pixelSize: 12
-                                opacity: 0.4
+                                opacity: 1
                             }
 
                         }
