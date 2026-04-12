@@ -5,6 +5,7 @@ import Quickshell
 Item {
     id: root
     property var walColors: null
+    property var panelWindow: null
 
     implicitWidth: layout.implicitWidth + 20
     implicitHeight: 50
@@ -22,6 +23,7 @@ Item {
 
         SystemTrayModule {
             walColors: root.walColors
+            panelWindow: root.panelWindow
             opacity: shell.calendarVisible ? 0 : 1
             Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutSine } }
         }

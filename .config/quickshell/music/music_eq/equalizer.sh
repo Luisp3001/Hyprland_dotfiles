@@ -38,10 +38,10 @@ try:
                     \"bypass\": False, \"input-gain\": 0.0, \"output-gain\": 0.0, \"left\": bands, \"right\": bands, \"mode\": \"IIR\", \"num-bands\": 32, \"split-channels\": False 
                 }, 
                 \"compressor\": { 
-                    \"bypass\": False, \"threshold\": -18.0, \"ratio\": 4.0, \"attack\": 20.0, \"release\": 100.0, \"knee\": -6.0, \"makeup\": 6.0 
+                    \"bypass\": False, \"threshold\": -20.0, \"ratio\": 4.0, \"attack\": 20.0, \"release\": 100.0, \"knee\": -6.0, \"makeup\": 3.0 
                 }, 
                 \"limiter\": { 
-                    \"bypass\": False, \"threshold\": -1.0, \"release\": 50.0, \"mode\": \"Peak\" 
+                    \"bypass\": False, \"threshold\": 0.0, \"release\": 50.0, \"mode\": \"Peak\" 
                 } 
         } 
     }

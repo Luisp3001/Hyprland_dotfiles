@@ -90,7 +90,7 @@ ShellRoot {
             lockUI.authenticating = false;
             if (result === PamResult.Success) {
                 rootLock.locked = false;
-                Quickshell.execDetached(["hypridle"])
+                Quickshell.execDetached(["bash", "-c", "pgrep -x hypridle || hypridle &"])
                 Qt.quit();
             } else {
                 lockUI.failed = true;

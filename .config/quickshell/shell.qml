@@ -267,6 +267,7 @@ ShellRoot {
 
     // 5. Right Modules Window (Cpu, Network, Tray)
     PanelWindow {
+        id: rightModulesWindow
         anchors { top: true; right: true }
         // Offset this window so it sits to the left of the Clock window (which is ~130px when collapsed)
         margins.right: 135
@@ -282,6 +283,7 @@ ShellRoot {
             id: rm
             anchors.fill: parent
             walColors: shell.walColors
+            panelWindow: rightModulesWindow
         }
     }
 
