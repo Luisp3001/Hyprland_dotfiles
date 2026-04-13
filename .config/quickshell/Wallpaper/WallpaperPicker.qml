@@ -73,7 +73,7 @@ QtObject {
         property bool isImageTab: true
         readonly property string homeDir: "file://" + Quickshell.env("HOME")
         readonly property string thumbDir: homeDir + "/.cache/wallpaper"
-        readonly property string srcDir: Quickshell.env("HOME") + "/dotfiles/wallpaper"
+        readonly property string srcDir: Quickshell.env("HOME") + "/wallpaper"
         readonly property string swwwCommand: "swww img '%1' --transition-type %2 --transition-pos 0.5,0.5 --transition-fps 144 --transition-duration 2"
         readonly property var transitions: ["wave"]
         readonly property int itemWidthExpanded: 700

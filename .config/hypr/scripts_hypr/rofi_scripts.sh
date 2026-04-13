@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SCRIPTS_DIR="$HOME/scripts"
+SCRIPTS_DIR="$HOME/dotfiles/scripts"
 
 case "$1" in
     # Si Rofi pasa una selección, la ejecutamos

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script updates an Arch Linux system by synchronizing package databases
+# Este script verifica si hay actualizaciones disponibles para el sistema Arch Linux
 updates=$(checkupdates 2>/dev/null)
 
 if [ -z "$updates" ]; then
@@ -10,8 +10,7 @@ fi
 
 # Muestra la lista en Rofi y pregunta si continuar
 choice=$(echo -e "Sí\nNo" | rofi -dmenu -i -p "Actualizaciones disponibles ¿Desea actualizar?
-
-$updates" -theme ~/.config/rofi/launchers/type-6/script_selector.rasi)
+$updates " rofi -theme ~/.config/rofi/launchers/script_selector.rasi -show scripts;)
 
 if [[ "$choice" == "Sí" ]]; then
     pkexec pacman -Syu --noconfirm

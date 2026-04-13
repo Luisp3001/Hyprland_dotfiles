@@ -1,5 +1,5 @@
 #!/bin/bash
-SRC_DIR="$HOME/dotfiles/wallpaper"
+SRC_DIR="$HOME/wallpaper"
 CACHE_DIR="$HOME/.cache/wallpaper"
 
 mkdir -p "$CACHE_DIR"
