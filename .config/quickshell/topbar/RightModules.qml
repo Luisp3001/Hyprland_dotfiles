@@ -24,26 +24,14 @@ Item {
         SystemTrayModule {
             walColors: root.walColors
             panelWindow: root.panelWindow
-            opacity: shell.calendarVisible ? 0 : 1
-            Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutSine } }
         }
 
         VolumeModule {
             walColors: root.walColors
-            opacity: shell.calendarVisible ? 0 : 1
-            Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutSine } }
         }
 
         CpuModule {
             walColors: root.walColors
-            opacity: shell.calendarVisible ? 0 : 1
-            Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutSine } }
-        }
-
-        NetworkModule {
-            walColors: root.walColors
-            opacity: shell.calendarVisible ? 0 : 1
-            Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutSine } }
         }
     }
 }

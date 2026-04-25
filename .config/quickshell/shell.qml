@@ -17,7 +17,6 @@ ShellRoot {
     property bool wallpaperVisible:    false
     property bool screenshotActive:    false
     property bool notifCenterVisible:  false
-    property bool calendarVisible:     false
     property bool powerMenuVisible:    false
     property bool dndEnabled:          false
 
@@ -190,6 +189,10 @@ ShellRoot {
         function togglePowerMenu(): void {
             shell.powerMenuVisible = !shell.powerMenuVisible;
         }
+
+        function toggleLauncher(): void {
+            mWidget.toggleLauncher();
+        }
     }
 
     // ── Top Bar Windowing Strategy ─────────────────────────────────────
@@ -222,6 +225,23 @@ ShellRoot {
         }
     }
 
+    // (Notification center logic is inside MusicWidget/NotificationBubble)
+
+    // 2b. Launcher Dismiss Overlay (click outside pill to close launcher)
+    PanelWindow {
+        anchors { top: true; bottom: true; left: true; right: true }
+        visible: mWidget.launcherOpen
+        exclusionMode: ExclusionMode.Ignore
+        WlrLayershell.layer: WlrLayer.Top
+        WlrLayershell.namespace: "launcher-dismiss"
+        color: "transparent"
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: mWidget.toggleLauncher()
+        }
+    }
+
     // 3. Left Modules Window (Launcher + Workspaces)
     PanelWindow {
         anchors { top: true; left: true }
@@ -243,13 +263,15 @@ ShellRoot {
     // 4. Center Music & Notification Window
     PanelWindow {
         anchors { top: true } // Auto-centered by Hyprland/wlroots
-        implicitWidth: mWidget.implicitWidth
+        implicitWidth: mWidget.implicitWidth 
         implicitHeight: mWidget.implicitHeight
         color: "transparent"
         visible: true
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.namespace: "quickshell"
         WlrLayershell.layer:     WlrLayer.Top
+        WlrLayershell.keyboardFocus: mWidget.launcherOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+        mask: Region { item: mWidget.maskItem }
 
         MusicWidget {
             id: mWidget
@@ -360,12 +382,12 @@ ShellRoot {
 
     // ── Volume Island (Overlay Layer) ──────────────────────────────────
     PanelWindow {
-        anchors { top: true }
+        anchors { bottom: true }
         // Match core width to ensure centering matches MusicWidget
         implicitWidth: 500 
         implicitHeight: 80
         // Position it dynamically below the MusicWidget
-        margins.top: mWidget.y + mWidget.height - 30
+        margins.bottom: 100
         color: "transparent"
         visible: shell.volumeVisible || volumeIsland.opacity > 0
         exclusionMode: ExclusionMode.Ignore

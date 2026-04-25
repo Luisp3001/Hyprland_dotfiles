@@ -102,7 +102,7 @@ Item {
                     
                     // Filter down to only valid active workspaces + special workspaces
                     model: {
-                        let activeWorkspaces = Hyprland.workspaces.values.slice().filter(ws => ws.name !== "special:scratchpad"); // optional filter
+                        let activeWorkspaces = Hyprland.workspaces.values.slice().filter(ws => !ws.name.startsWith("special:S-"));
                         
                         // Sort so that numbered workspaces come first sequentially, then specials at the end
                         activeWorkspaces.sort((a, b) => {

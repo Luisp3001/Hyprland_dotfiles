@@ -32,6 +32,7 @@ Item {
                     fillMode: Image.PreserveAspectFit
                     smooth: true
                     asynchronous: true
+                    cache: false
                     visible: status === Image.Ready
                 }
 

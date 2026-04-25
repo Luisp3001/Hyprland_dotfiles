@@ -22,7 +22,7 @@ Rectangle {
         onEntered: root.hovered = true
         onExited: root.hovered = false
         cursorShape: Qt.PointingHandCursor
-        onClicked: Quickshell.execDetached(["pavucontrol"])
+        onClicked: Quickshell.execDetached(["pypr", "toggle", "volume"])
     }
 
     RowLayout {

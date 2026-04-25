@@ -225,23 +225,6 @@ ShellRoot {
                     }
                 }
                 Timer { interval: 5000; running: true; repeat: true; triggeredOnStart: true; onTriggered: batPoller.running = true }
-
-                Process {
-                    id: weatherPoller
-                    property string scriptPath: Qt.resolvedUrl("calendar/weather.sh").toString().replace(/^file:\/\//, "")
-                    command: ["bash", "-c", '"' + scriptPath + '" --current-icon; "' + scriptPath + '" --current-temp']
-                    stdout: StdioCollector {
-                        onStreamFinished: {
-                            let lines = this.text.trim().split("\n");
-                            if (lines.length >= 2) {
-                                screenRoot.weatherIcon = lines[0] || "";
-                                screenRoot.weatherTemp = lines[1] || "--°C";
-                            }
-                        }
-                    }
-                }
-                Timer { interval: 900000; running: true; repeat: true; triggeredOnStart: true; onTriggered: weatherPoller.running = true }
-
                 // ---------------------------------------------------------
                 // 1. LIVING BACKGROUND
                 // ---------------------------------------------------------

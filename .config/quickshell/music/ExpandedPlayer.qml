@@ -6,6 +6,47 @@ Item {
     id: expandedPlayer
     property var rootWidget
 
+    // Background animation: Flowing Orbits
+    property real globalOrbitAngle: 0
+    NumberAnimation on globalOrbitAngle {
+        from: 0; to: Math.PI * 2
+        duration: 90000
+        loops: Animation.Infinite
+        running: true
+    }
+
+    Item {
+        z: -10
+        anchors.fill: parent
+        anchors.leftMargin: -18
+        anchors.rightMargin: -18
+        anchors.bottomMargin: -14
+        anchors.topMargin: -80
+        clip: true
+
+        Rectangle {
+            width: parent.width * 0.8; height: width; radius: width / 2
+            x: (parent.width / 2 - width / 2) + Math.cos(expandedPlayer.globalOrbitAngle * 2) * 150
+            y: (parent.height / 2 - height / 2) + Math.sin(expandedPlayer.globalOrbitAngle * 2) * 100
+            
+            opacity: rootWidget.isPlaying ? 0.08 : 0.04
+            color: rootWidget.walColors.colors.color2
+            Behavior on color { ColorAnimation { duration: 1000 } }
+            Behavior on opacity { NumberAnimation { duration: 1000 } }
+        }
+        
+        Rectangle {
+            width: parent.width * 0.9; height: width; radius: width / 2
+            x: (parent.width / 2 - width / 2) + Math.sin(expandedPlayer.globalOrbitAngle * 1.5) * -150
+            y: (parent.height / 2 - height / 2) + Math.cos(expandedPlayer.globalOrbitAngle * 1.5) * -100
+            
+            opacity: rootWidget.isPlaying ? 0.08 : 0.02
+            color: rootWidget.walColors.colors.color3 || rootWidget.walColors.colors.color1
+            Behavior on color { ColorAnimation { duration: 1000 } }
+            Behavior on opacity { NumberAnimation { duration: 1000 } }
+        }
+    }
+
     function execCmd(cmdStr) {
         var safeCmd = cmdStr.replace(/`/g, "\\`");
         var p = Qt.createQmlObject(`
@@ -62,20 +103,28 @@ Item {
 
     // ── Album art + track info ────────────────────────────
     RowLayout {
-        id: albumRow
-        anchors {
-            top: parent.top
-            left: parent.left
-            right: parent.right
-        }
-        spacing: 14
-        height: 100
+        anchors.fill: parent
+        spacing: 20
+
+        // LEFT COLUMN (Player)
+        ColumnLayout {
+            Layout.preferredWidth: 260
+            Layout.fillHeight: true
+            spacing: 15
+
+            // Album art + track info
+            ColumnLayout {
+                id: albumRow
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 14
 
         // Album art (Vinyl Record Style)
         Item {
             id: artContainerWrapper
-            Layout.preferredWidth: 100
-            Layout.preferredHeight: 100
+            Layout.preferredWidth: 160
+            Layout.preferredHeight: 160
+            Layout.alignment: Qt.AlignHCenter
             
             // Allow the whole item to rotate smoothly like a vinyl
             Item {
@@ -119,9 +168,9 @@ Item {
                 // Black center circle (Vinyl hole)
                 Rectangle {
                     anchors.centerIn: parent
-                    width: 14
-                    height: 14
-                    radius: 7
+                    width: 22
+                    height: 22
+                    radius: 11
                     color: "black"
                     opacity: 0.8
                 }
@@ -190,33 +239,36 @@ Item {
                 text: rootWidget.hasSpotify ? (rootWidget.spotifyPlayer.trackTitle || "Unknown") : "Nothing playing"
                 color: rootWidget.walColors.special.foreground
                 font.family: "JetBrains Mono"
-                font.pixelSize: 14
+                font.pixelSize: 16
                 font.weight: Font.Bold
                 elide: Text.ElideRight
                 Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
             }
 
             Text {
                 text: rootWidget.hasSpotify ? (rootWidget.spotifyPlayer.trackArtist || "Unknown") : "Start playing some music"
                 color: rootWidget.walColors.special.foreground
                 font.family: "JetBrains Mono"
-                font.pixelSize: 11
+                font.pixelSize: 12
                 font.weight: Font.Normal
                 opacity: 0.65
                 elide: Text.ElideRight
                 Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
             }
 
             Text {
                 text: rootWidget.hasSpotify ? (rootWidget.spotifyPlayer.trackAlbum || "") : ""
                 color: rootWidget.walColors.special.foreground
                 font.family: "JetBrains Mono"
-                font.pixelSize: 10
+                font.pixelSize: 11
                 font.weight: Font.Normal
                 opacity: 0.45
                 elide: Text.ElideRight
                 Layout.fillWidth: true
                 visible: text !== ""
+                horizontalAlignment: Text.AlignHCenter
             }
         }
     }
@@ -224,12 +276,8 @@ Item {
     // ── Progress bar ──────────────────────────────────────
     ColumnLayout {
         id: progressSection
-        anchors {
-            top: albumRow.bottom
-            topMargin: 18
-            left: parent.left
-            right: parent.right
-        }
+        Layout.fillWidth: true
+        Layout.alignment: Qt.AlignHCenter
         spacing: 5
 
         // Seek bar
@@ -334,11 +382,7 @@ Item {
     RowLayout {
         id: controlsRow
         z: 5
-        anchors {
-            top: progressSection.bottom
-            topMargin: 8
-            horizontalCenter: parent.horizontalCenter
-        }
+        Layout.alignment: Qt.AlignHCenter
         spacing: 14
         visible: rootWidget.hasSpotify
 
@@ -368,65 +412,46 @@ Item {
         }
     }
 
-    // ── Equalizer (Visual Simulation) ─────────────────────
-    ColumnLayout {
-        id: eqSection
-        anchors {
-            top: controlsRow.bottom
-            topMargin: 22
-            left: parent.left
-            right: parent.right
-        }
+        } // End of Left Column
+
+        // RIGHT COLUMN (Equalizer)
+        ColumnLayout {
+            id: eqSection
+            Layout.fillWidth: true
+            Layout.fillHeight: true
         spacing: 14
         visible: rootWidget.hasSpotify
 
-        // EQ Header / Toggle Button
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 24
-            radius: 12
-            color: "transparent"
-            border.color: rootWidget.walColors.colors.color2
-            border.width: eqToggleArea.containsMouse ? 1 : 0
-            
-            Text {
-                anchors.centerIn: parent
-                text: rootWidget.eqExpanded ? "EQUALIZER ⏶" : "EQUALIZER ⏷"
-                color: rootWidget.walColors.special.foreground
-                font.family: "JetBrains Mono"
-                font.pixelSize: 11
-                font.weight: Font.Bold
-                opacity: 0.8
-            }
-            
-            MouseArea {
-                id: eqToggleArea
-                anchors.fill: parent
-                hoverEnabled: true
-                onClicked: rootWidget.eqExpanded = !rootWidget.eqExpanded
-            }
+        Text {
+            text: "EQUALIZER"
+            color: rootWidget.walColors.special.foreground
+            font.family: "JetBrains Mono"
+            font.pixelSize: 13
+            font.weight: Font.Bold
+            opacity: 0.8
+            Layout.alignment: Qt.AlignHCenter
         }
         
-        // Collapsible EQ Content
         ColumnLayout {
             id: eqContent
             Layout.fillWidth: true
+            Layout.fillHeight: true
             spacing: 14
-            visible: rootWidget.eqExpanded
-            opacity: rootWidget.eqExpanded ? 1.0 : 0.0
-            
-            Behavior on opacity {
-                NumberAnimation { duration: 300 }
-            }
 
         // 10-Band Sliders row
         Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: 90
+            Layout.preferredHeight: 180
 
             Canvas {
                 id: lightningCanvas
-                anchors.fill: parent
+                anchors {
+                    top: parent.top
+                    left: parent.left
+                    right: parent.right
+                    bottom: parent.bottom
+                    bottomMargin: 20 // Account for label height + spacing
+                }
                 opacity: 1.0 - expandedPlayer.eqLightningFade
                 z: 0
                 renderTarget: Canvas.FramebufferObject
@@ -465,7 +490,7 @@ Item {
                         var col = slidersRepeater.itemAt(i);
                         var val = col ? col.sliderVal : 0;
                         var px = (i + 0.5) * itemWidth;
-                        var py = 36 - (val / 10.0) * 36;
+                        var py = (height / 2) - (val / 10.0) * (height / 2);
                         pts.push({ x: px, y: py });
                     }
 
@@ -625,6 +650,7 @@ Item {
                     // Label
                     Text {
                         Layout.alignment: Qt.AlignHCenter
+                        Layout.preferredHeight: 14
                         text: modelData
                         color: rootWidget.walColors.special.foreground
                         font.family: "JetBrains Mono"
@@ -692,6 +718,7 @@ Item {
                 }
             }
         }
-    }
-    }
+        } // End eqContent ColumnLayout
+        } // End RIGHT COLUMN ColumnLayout
+    } // End Main RowLayout
 }

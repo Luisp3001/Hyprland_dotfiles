@@ -1,10 +1,9 @@
 /*****----- Configuration -----*****/
 configuration {
-	modi:                       "drun,window,scripts:~/.config/hypr/scripts_hypr/rofi_scripts.sh";
+	modi:                       "drun,scripts:~/.config/hypr/scripts_hypr/rofi_scripts.sh";
     show-icons:                 true;
     icon-theme:                "Papirus-Dark";
     display-drun:               "APPS";
-    display-window:             "WINDOWS";
     display-scripts:            "SCRIPTS";
 	drun-display-format:        "{name}";
 	window-format:              "{w} · {t}";

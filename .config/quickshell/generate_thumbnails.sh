@@ -9,7 +9,7 @@ for img in "$SRC_DIR"/*.{jpg,jpeg,png,webp}; do
     filename=$(basename "$img")
     
     if [ ! -f "$CACHE_DIR/$filename" ]; then
-        magick "$img" -resize "1100x600" -gravity center "$CACHE_DIR/$filename"
+        magick "$img" -resize "800x500" -gravity center "$CACHE_DIR/$filename"
         echo "Generated thumbnail: $filename"
     fi
 done

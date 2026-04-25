@@ -1,4 +1,6 @@
 import "../notificationcenter"
+import "../components" as Lib
+import "../notificationcenter" as Hub
 import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Controls
@@ -17,17 +19,16 @@ Rectangle {
     property var server: null
     property var historyModel: null
     property bool dndEnabled: false
-
     signal clicked()
 
     antialiasing: true
     clip: true
     layer.enabled: true
-    // Morph dimensions: from 45x45 bell → 340x620 vertical panel
-    width: centerOpen ? 480 : 45
-    height: centerOpen ? 600 : 45
+    // Morph dimensions: from 45x45 bell → 380x740 vertical panel
+    width: centerOpen ? 400 : 45
+    height: centerOpen ? 670 : 45
     radius: centerOpen ? 22 : 300 // Use a high fixed radius during close for aggressive rounding
-    color: walColors ? (centerOpen ? Qt.rgba(20/255, 20/255, 22/255, 1) : walColors.special.background) : "#1c1e26"
+    color: walColors ? walColors.special.background : "#1c1e26"
     border.color: active || centerOpen ? Qt.alpha(walColors.colors.color3, 0.5) : "#3d4150"
     border.width: centerOpen ? 1.5 : 1
     opacity: 0
@@ -119,6 +120,7 @@ Rectangle {
             anchors.centerIn: parent
             sourceSize: Qt.size(20, 20)
             visible: false
+            cache: false
         }
 
         ColorOverlay {
@@ -157,239 +159,104 @@ Rectangle {
     Item {
         id: expandedState
 
-        // Sub-components
-        property var history: root.historyModel
-
-        // Clock
-        property string _clockTime: Qt.formatTime(new Date(), "hh:mm")
-        property string _clockDate: Qt.formatDate(new Date(), "dddd, MMMM d")
-
-        width: parent.width - 20
-        height: parent.height - 20
-        anchors.centerIn: parent
-        opacity: root.centerOpen ? 0.8 : 0
-        visible: root.centerOpen ? true : false
-        clip: true
-        Timer {
-            interval: 1000
-            running: root.centerOpen
-            repeat: true
-            onTriggered: {
-                expandedState._clockTime = Qt.formatTime(new Date(), "hh:mm");
-                expandedState._clockDate = Qt.formatDate(new Date(), "dddd, MMMM d");
-            }
+        property var theme: Lib.ThemeEngine {
+            isDarkMode: true
+            walColors: root.walColors
         }
+        property bool batteryCardActive: false
+        property bool wifiMenuOpen: false
+        
+        onVisibleChanged: {
+            if (!visible) wifiMenuOpen = false
+        }
+        
+        width: parent.width - 24
+        height: parent.height - 24
+        anchors.centerIn: parent
+        opacity: root.centerOpen ? 1 : 0
+        visible: root.centerOpen
+        clip: true
 
-        ColumnLayout {
-            id: verticalLayout
-
+        Item {
             anchors.fill: parent
-            anchors.margins: 18
-            spacing: 12
 
-            // ── Row 1: Clock time + Clear All ──
-            RowLayout {
+            ColumnLayout {
+                id: verticalLayout
+                visible: !expandedState.wifiMenuOpen
+            anchors.fill: parent
+            anchors.margins: 4
+            spacing: expandedState.theme.gapCard
+
+            // ── Header (Profile + CPU/RAM + Power) ──
+            Hub.Header {
+                id: header
+                theme: expandedState.theme
                 Layout.fillWidth: true
-                spacing: 8
+                profileName: "luisp"
+                profileImage: Quickshell.env("HOME") + "/.face.icon"
+                active: root.centerOpen
+                onCloseRequested: root.clicked()
 
-                Text {
-                    text: expandedState._clockTime
-                    color: root.walColors.special.foreground
-                    font.family: "JetBrains Mono"
-                    font.pixelSize: 32
-                    font.weight: Font.Bold
-                }
-
-            }
-
-            // ── Row 2: Date + Close button ──
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                Text {
-                    text: expandedState._clockDate
-                    color: root.walColors.special.foreground
-                    font.family: "JetBrains Mono"
-                    font.pixelSize: 16
-                    opacity: 1
-                }
-
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                height: 1
-                color: Qt.rgba(1, 1, 1, 0.08)
-            }
-
-            // ── Quick Actions grid + sliders ──
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: quickActionsInner.implicitHeight + 24
-                radius: 16
-                color: Qt.rgba(1, 1, 1, 0.04)
-                border.color: Qt.rgba(1, 1, 1, 0.06)
-                border.width: 1
-
-                QuickActions {
-                    id: quickActionsInner
-                    active: root.centerOpen
-                    dndEnabled: root.dndEnabled
-                    anchors.centerIn: parent
-                    width: parent.width - 16
-                    walColors: root.walColors
-                    onDndEnabledChanged: root.dndEnabled = quickActionsInner.dndEnabled
+                onPowerAction: function(act, lbl) {
+                    header.expanded = false
+                    expandedState.executeAction(act)
                 }
             }
 
-
-
-            Rectangle {
+            // ── Buttons & Sliders (WiFi, BT, CPU, DND + Vol/Bri) ──
+            Hub.ButtonsSlidersCard {
+                id: buttons
                 Layout.fillWidth: true
-                height: 1
-                color: Qt.rgba(1, 1, 1, 0.08)
+                active: root.centerOpen
+                theme: expandedState.theme
+                onCloseRequested: root.clicked()
+                onBatteryToggleRequested: expandedState.batteryCardActive = !expandedState.batteryCardActive
+                onWifiMenuRequested: expandedState.wifiMenuOpen = true
             }
 
-            RowLayout {
+            // ── Battery Health (expandable) ──
+            Hub.BatteryHealthCard {
+                id: battery
                 Layout.fillWidth: true
-
-                Text {
-                    text: "NOTIFICATIONS"
-                    color: root.walColors.special.foreground
-                    font.family: "JetBrains Mono"
-                    font.pixelSize: 13 // Increased font
-                    font.weight: Font.Bold
-                    opacity: 1
-                }
-
-                Item {
-                    Layout.fillWidth: true
-                }
-
-                Text {
-                    text: "Clear all"
-                    color: root.walColors.colors.color2
-                    font.family: "JetBrains Mono"
-                    font.pixelSize: 13 // Increased font
-                    opacity: expandedState.history.model.count > 0 ? 1 : 0.3
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: expandedState.history.clearAll()
-                        enabled: expandedState.history.model.count > 0
-                    }
-
-                }
-
+                active: expandedState.batteryCardActive
+                theme: expandedState.theme
             }
 
-            // ── Notification list ──
-            ListView {
-                id: notifList
-
-                Layout.fillWidth: true
-                Layout.fillHeight: true // Priority to take remaining space
-                model: expandedState.history.model
-                spacing: 6
-                clip: true
-                boundsBehavior: Flickable.StopAtBounds
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "No Notifications"
-                    color: root.walColors.special.foreground
-                    font.family: "JetBrains Mono"
-                    font.pixelSize: 12
-                    opacity: 0.25
-                    visible: notifList.count === 0
-                }
-
-                delegate: Rectangle {
-                    width: notifList.width
-                    height: 64 // Increased height
-                    radius: 12
-                    color: Qt.rgba(1, 1, 1, 0.05)
-                    border.color: Qt.rgba(1, 1, 1, 0.06)
-                    border.width: 1
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 10 // Increased margins
-                        spacing: 12 // Increased spacing
-
-                        Rectangle {
-                            width: 36
-                            height: 36
-                            radius: 8
-                            color: Qt.rgba(1, 1, 1, 0.08)
-
-                            Image {
-                                anchors.fill: parent
-                                anchors.margins: 4
-                                source: image || ""
-                                fillMode: Image.PreserveAspectFit
-                                visible: status === Image.Ready
-                                smooth: true
-                            }
-
-                        }
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            spacing: 2 // Increased spacing
-                            clip: true
-
-                            Text {
-                                text: summary || "(no title)"
-                                color: root.walColors.special.foreground
-                                font.family: "JetBrains Mono"
-                                font.pixelSize: 13 // Increased font
-                                font.weight: Font.Bold
-                                elide: Text.ElideRight
-                                maximumLineCount: 1
-                                clip: true
-                                Layout.fillWidth: true
-                            }
-
-                            Text {
-                                text: body || ""
-                                color: root.walColors.special.foreground
-                                font.family: "JetBrains Mono"
-                                font.pixelSize: 11 // Increased font
-                                opacity: 1
-                                elide: Text.ElideRight
-                                maximumLineCount: 1
-                                clip: true
-                                Layout.fillWidth: true
-                            }
-
-                        }
-
-                        MouseArea {
-                            width: 20
-                            height: 20
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: expandedState.history.removeAt(index)
-
-                            Text {
-                                text: "✕"
-                                color: root.walColors.special.foreground
-                                anchors.centerIn: parent
-                                font.pixelSize: 12
-                                opacity: 1
-                            }
-
-                        }
-
-                    }
-
-                }
-
+            Hub.MediaCard {
+                id: mediaCard
+                Layout.fillWidth: true;
+                forceHidden: notifs.expanded && notifs.compactMode
             }
 
+
+            // ── Calendar & Weather ──
+            Hub.CalendarWeatherCard {
+                Layout.fillWidth: true
+                active: root.centerOpen
+                theme: expandedState.theme
+                onCloseRequested: root.clicked()
+            }
+
+            // ── Notifications (Quickshell History) ──
+            Hub.NotificationsCard {
+                id: notifs
+                Layout.fillWidth: true
+                active: root.centerOpen
+                compactMode: battery.visible || header.expanded || mediaCard.wouldBeActive
+                dndActive: buttons.dnd
+                theme: expandedState.theme
+                historyModel: root.historyModel
+            }
+            }
+        
+            Lib.WifiMenu {
+                id: wifiMenu
+                visible: expandedState.wifiMenuOpen
+                anchors.fill: parent
+                theme: expandedState.theme
+                walColors: root.walColors
+                onCloseRequested: expandedState.wifiMenuOpen = false
+            }
         }
 
         Behavior on opacity {

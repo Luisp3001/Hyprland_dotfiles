@@ -109,6 +109,7 @@ Rectangle {
             visible: false
             fillMode: Image.PreserveAspectFit
             smooth: true
+            cache: false
             mipmap: true
         }
 

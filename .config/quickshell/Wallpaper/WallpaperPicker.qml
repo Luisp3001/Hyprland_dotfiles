@@ -22,7 +22,7 @@ QtObject {
     property var currentWallProcess
 
     currentWallProcess: Process {
-        command: ["bash", "-c", "swww query | grep 'currently displaying' | sed -E 's/.*image: (.*)/\\1/' || true"]
+        command: ["bash", "-c", "if bg_id=$(pgrep -af linux-wallpaper | grep -oP -e '--bg \\K[0-9]+' | head -n 1) && [ -n \"$bg_id\" ]; then echo \"animated:$bg_id\"; else swww query | grep 'currently displaying' | sed -E 's/.*image: (.*)/\\1/' | head -n 1 || true; fi"]
         onExited: {
             pickerWindow.processFinished = true;
             pickerWindow.tryFocus();
@@ -30,11 +30,21 @@ QtObject {
 
         stdout: SplitParser {
             onRead: (data) => {
-                let parts = data.trim().split('/');
-                let name = parts[parts.length - 1];
-                if (name)
-                    pickerWindow.targetWallName = name;
-
+                let text = data.trim();
+                if (text.startsWith("animated:")) {
+                    let bgId = text.split(":")[1];
+                    if (bgId) {
+                        pickerWindow.targetAnimatedId = bgId;
+                        pickerWindow.isImageTab = false;
+                    }
+                } else {
+                    let parts = text.split('/');
+                    let name = parts[parts.length - 1];
+                    if (name && name !== "black.jpg") {
+                        pickerWindow.targetWallName = name;
+                        pickerWindow.isImageTab = true;
+                    }
+                }
             }
         }
     }
@@ -52,10 +62,18 @@ QtObject {
                     try {
                         let item = JSON.parse(trimmed);
                         animatedModel.append(item);
+                        if (!pickerWindow.initialFocusSet && pickerWindow.processFinished && !pickerWindow.isImageTab) {
+                            pickerWindow.tryFocus();
+                        }
                     } catch (e) {
                     }
                 }
             }
+        }
+
+        onExited: {
+            pickerWindow.weProcessFinished = true;
+            pickerWindow.tryFocus();
         }
 
     }
@@ -69,43 +87,65 @@ QtObject {
         property int targetWallIndex: 0
         property bool initialFocusSet: false
         property string targetWallName: ""
+        property string targetAnimatedId: ""
         property bool processFinished: false
+        property bool weProcessFinished: false
         property bool isImageTab: true
         readonly property string homeDir: "file://" + Quickshell.env("HOME")
         readonly property string thumbDir: homeDir + "/.cache/wallpaper"
         readonly property string srcDir: Quickshell.env("HOME") + "/wallpaper"
-        readonly property string swwwCommand: "swww img '%1' --transition-type %2 --transition-pos 0.5,0.5 --transition-fps 144 --transition-duration 2"
+        readonly property string swwwCommand: "swww img '%1' --transition-type %2 --transition-pos 0.5,0.5 --transition-fps 144 --transition-duration 1"
         readonly property var transitions: ["wave"]
         readonly property int itemWidthExpanded: 700
-        readonly property int itemWidthCollapsed: 120
+        readonly property int itemWidthCollapsed: 80
         readonly property int itemHeight: 420
         readonly property int borderWidth: 3
-        readonly property int wpSpacing: 6
-        readonly property real skewFactor: -0.15
+        readonly property int wpSpacing: 5
+        readonly property real skewFactor: -0.20
         readonly property color accentGold: "#C8A961"
 
         function tryFocus() {
             if (!initialFocusSet && processFinished) {
                 let foundIndex = -1;
-                if (targetWallName !== "" && targetWallIndex === 0) {
-                    for (let i = 0; i < view.count; i++) {
-                        let fname = folderModel.get(i, "fileName");
-                        if (fname === targetWallName || fname === "000_" + targetWallName) {
-                            foundIndex = i;
-                            break;
+                
+                if (!isImageTab) {
+                    if (targetAnimatedId !== "") {
+                        for (let i = 0; i < animatedModel.count; i++) {
+                            if (animatedModel.get(i).id === targetAnimatedId) {
+                                foundIndex = i;
+                                break;
+                            }
                         }
                     }
-                }
-                if (foundIndex !== -1) {
-                    view.currentIndex = foundIndex;
-                    initialFocusSet = true;
-                } else if (targetWallIndex > 0 && view.count > targetWallIndex) {
-                    view.currentIndex = targetWallIndex;
-                    initialFocusSet = true;
-                } else if (folderModel.status === FolderListModel.Ready && view.count > 0) {
-                    let safeIndex = Math.min(targetWallIndex, view.count - 1);
-                    view.currentIndex = safeIndex;
-                    initialFocusSet = true;
+                    if (foundIndex !== -1) {
+                        animatedView.currentIndex = foundIndex;
+                        initialFocusSet = true;
+                    } else if (weProcessFinished && animatedModel.count > 0) {
+                        let safeIndex = Math.min(targetWallIndex, animatedModel.count - 1);
+                        animatedView.currentIndex = safeIndex;
+                        initialFocusSet = true;
+                    }
+                } else {
+                    if (targetWallName !== "" && targetWallIndex === 0) {
+                        for (let i = 0; i < view.count; i++) {
+                            let fname = folderModel.get(i, "fileName");
+                            if (fname === targetWallName || fname === "000_" + targetWallName) {
+                                foundIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                    if (foundIndex !== -1) {
+                        view.currentIndex = foundIndex;
+                        initialFocusSet = true;
+                    } else if (targetWallIndex > 0 && view.count > targetWallIndex) {
+                        view.currentIndex = targetWallIndex;
+                        initialFocusSet = true;
+                    } else if (folderModel.status === FolderListModel.Ready && view.count > 0) {
+                        let safeIndex = Math.min(targetWallIndex, view.count - 1);
+                        view.currentIndex = safeIndex;
+                        initialFocusSet = true;
+                    }
                 }
             }
         }
@@ -196,7 +236,7 @@ QtObject {
                     spacing: pickerWindow.wpSpacing
                     orientation: ListView.Horizontal
                     clip: false
-                    cacheBuffer: 800
+                    cacheBuffer: 0
                     highlightRangeMode: ListView.StrictlyEnforceRange
                     preferredHighlightBegin: (width / 2) - (pickerWindow.itemWidthExpanded / 2)
                     preferredHighlightEnd: (width / 2) + (pickerWindow.itemWidthExpanded / 2)
@@ -312,9 +352,8 @@ QtObject {
                                     height: parent.height
                                     fillMode: Image.PreserveAspectCrop
                                     source: fileUrl
+                                    cache: false
                                     asynchronous: true
-                                    sourceSize.width: pickerWindow.itemWidthExpanded + (pickerWindow.itemHeight * Math.abs(pickerWindow.skewFactor)) + 50
-                                    sourceSize.height: pickerWindow.itemHeight
 
                                     transform: Matrix4x4 {
                                         property real s: -pickerWindow.skewFactor
@@ -404,7 +443,7 @@ QtObject {
                     spacing: pickerWindow.wpSpacing
                     orientation: ListView.Horizontal
                     clip: false
-                    cacheBuffer: 800
+                    cacheBuffer: 0
                     highlightRangeMode: ListView.StrictlyEnforceRange
                     preferredHighlightBegin: (width / 2) - (pickerWindow.itemWidthExpanded / 2)
                     preferredHighlightEnd: (width / 2) + (pickerWindow.itemWidthExpanded / 2)
@@ -508,10 +547,9 @@ QtObject {
                                     width: parent.width + (parent.height * Math.abs(pickerWindow.skewFactor)) + 50
                                     height: parent.height
                                     fillMode: Image.Stretch
+                                    cache: false
                                     source: model.preview
                                     asynchronous: true
-                                    sourceSize.width: pickerWindow.itemWidthExpanded + (pickerWindow.itemHeight * Math.abs(pickerWindow.skewFactor)) + 50
-                                    sourceSize.height: pickerWindow.itemHeight
 
                                     transform: Matrix4x4 {
                                         property real s: -pickerWindow.skewFactor
@@ -728,13 +766,19 @@ QtObject {
             // Reset state for fresh open
             pickerWindow.initialFocusSet = false;
             pickerWindow.processFinished = false;
+            pickerWindow.weProcessFinished = false;
             pickerWindow.targetWallName = "";
+            pickerWindow.targetAnimatedId = "";
             pickerWindow.targetWallIndex = 0;
             currentWallProcess.running = true;
             animatedModel.clear();
             weProcess.running = true;
             // Trigger thumbnail synchronization
             syncThumbnailsProcess.running = true;
+        }
+        else {
+            animatedModel.clear()
+            gc()
         }
     }
 }

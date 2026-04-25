@@ -208,10 +208,7 @@ Item {
             baseColor: root.lockColor
             onActivated: {
                 root.close()
-                // Call the IPC lockScreen handler
-                Quickshell.execDetached(["killall", "hypridle"])
-                Quickshell.execDetached(["qs", "ipc", "call", "shell", "lockScreen"])
-                
+                Quickshell.execDetached(["bash", "-c", "qs ipc call shell toggleNotifCenter && sleep 1 && hyprlock"])
             }
         }
 
@@ -222,9 +219,7 @@ Item {
             baseColor: root.sleepColor
             onActivated: {
                 root.close()
-                Quickshell.execDetached(["killall", "hypridle"])
-                Quickshell.execDetached(["qs", "ipc", "call", "shell", "lockScreen"])
-                Quickshell.execDetached(["bash", "-c", "sleep 1 && systemctl suspend"])
+                Quickshell.execDetached(["bash", "-c", "qs ipc call shell toggleNotifCenter && sleep 1 && systemctl suspend"])
             }
         }
 

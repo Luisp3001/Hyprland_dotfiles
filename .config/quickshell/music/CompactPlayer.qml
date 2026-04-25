@@ -21,7 +21,7 @@ RowLayout {
     }
 
     spacing: 18
-    visible: !rootWidget.notificationVisible && (noteOpacity.value > 0 || textOpacity.value > 0 || controlsOpacity.value > 0)
+    visible: !rootWidget.notificationVisible && !rootWidget.launcherOpen && (noteOpacity.value > 0 || textOpacity.value > 0 || controlsOpacity.value > 0)
 
     QtObject {
         id: noteOpacity

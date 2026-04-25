@@ -48,13 +48,25 @@ QtObject {
                             "| appIcon hint:", notif.appIcon, "| image hint:", notif.image);
             }
 
+            var persistentImage = sourceImage;
+            var isTmp = sourceImage.startsWith("file:///tmp/") || sourceImage.startsWith("/tmp/");
+            if (isTmp) {
+                var cacheDir = "/tmp/quickshell_notif_cache";
+                Quickshell.execDetached(["mkdir", "-p", cacheDir]);
+                var ts = new Date().getTime();
+                var destFile = cacheDir + "/notif_" + ts + ".png";
+                var srcFile = sourceImage.replace("file://", "");
+                Quickshell.execDetached(["cp", srcFile, destFile]);
+                persistentImage = "file://" + destFile;
+            }
+
             var entry = {
                 notifId:  notif.id,
                 summary:  notif.summary  || "",
                 body:     notif.body     || "",
                 appName:  notif.appName  || "",
                 appIcon:  notif.appIcon  || "",
-                image:    sourceImage    || "",
+                image:    persistentImage|| "",
                 urgency:  notif.urgency  ?? 1,
                 time:     Qt.formatTime(new Date(), "hh:mm"),
                 notifRef: notif

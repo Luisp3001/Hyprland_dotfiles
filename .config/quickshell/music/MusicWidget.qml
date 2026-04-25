@@ -20,6 +20,8 @@ Item {
     property bool detailExpanded: false
     // EQ expanded state
     property bool eqExpanded: false
+    // ── App Launcher state ──────────────────────────────────────────────
+    property bool launcherOpen: false
     // ── Notification system ────────────────────────────────────────────
     required property var notifHandler
     property var server: null
@@ -31,6 +33,8 @@ Item {
     property int verticalPadding: 8
     // Opacity controller for notification content
     property var notifOpacity
+    // Opacity controller for launcher content
+    property var launcherOpacity
     // Sequenced collapse: fade out content first, THEN shrink pill
     property var collapseSequencer
     // Timer to show notification after music content fades
@@ -68,10 +72,43 @@ Item {
     // However, height remains dynamic to release screen real estate and fix click-through.
     property real targetImplicitHeight: {
         if (root.notifCenterVisible)
-            return 620;
+            return 690;
 
         var h = pill.targetHeight;
         return h + root.verticalPadding + 15;
+    }
+
+    // ── App Launcher toggle ─────────────────────────────────────────────
+    function toggleLauncher() {
+        if (root.launcherOpen) {
+            // Close launcher: fade content then shrink
+            launcherOpacity.value = 0.0;
+            launcherCloseTimer.start();
+        } else {
+            // Close any other expanded state first
+            if (root.detailExpanded) {
+                detailOpacity.value = 0;
+                root.detailExpanded = false;
+                root.eqExpanded = false;
+            }
+            if (root.notificationVisible) {
+                root.notifOpacity.value = 0;
+                root.notificationVisible = false;
+            }
+            root.launcherOpen = true;
+        }
+    }
+
+    onLauncherOpenChanged: {
+        if (launcherOpen) {
+            launcherFadeInTimer.start();
+            // If Loader item already exists (re-open), reload now.
+            // First open is handled by Loader.onLoaded.
+            Qt.callLater(function() {
+                if (launcherContentLoader.item)
+                    launcherContentLoader.item.reload();
+            });
+        }
     }
     property real currentImplicitHeight: targetImplicitHeight
 
@@ -82,7 +119,10 @@ Item {
         if (root.notificationVisible)
             return ;
 
-        // Block while notification showing
+        // Block while notification or launcher showing
+        if (root.launcherOpen)
+            return;
+
         if (root.detailExpanded) {
             // Step 1: fade out detail content immediately
             detailOpacity.value = 0;
@@ -122,7 +162,17 @@ Item {
         row.showText.start();
         row.showControls.start();
     }
-    implicitWidth: 500
+    implicitWidth: 860
+
+    property Item maskItem: maskContainer
+    Item {
+        id: maskContainer
+        x: Math.min(pill.x, notifBubble.x)
+        y: Math.min(pill.y, notifBubble.y)
+        width: Math.max(pill.x + pill.width, notifBubble.x + notifBubble.width) - x
+        height: Math.max(pill.y + pill.height, notifBubble.y + notifBubble.height) - y
+    }
+
     implicitHeight: currentImplicitHeight
     onTargetImplicitHeightChanged: {
         if (targetImplicitHeight > currentImplicitHeight)
@@ -146,7 +196,8 @@ Item {
 
         z: 1
         property real compactWidth: 370
-        property real expandedWidth: 400
+        property real expandedWidth: 850
+        property real launcherWidth: 560
         property real notifWidth: 430
         property real notifHeight: {
             if (!root.notificationVisible)
@@ -155,15 +206,16 @@ Item {
             // Calculate height based on content
             return Math.min(300, Math.max(90, notifContent.notifColumn.implicitHeight + 30));
         }
-        property real targetWidth: root.notificationVisible ? notifWidth : (root.detailExpanded ? expandedWidth : compactWidth)
-        property real targetHeight: root.notificationVisible ? notifHeight : (root.detailExpanded ? (root.eqExpanded ? 480 : 280) : 45)
+        property real launcherHeight: (launcherContentLoader.item ? launcherContentLoader.item.preferredHeight : 425) + 28
+        property real targetWidth: root.launcherOpen ? launcherWidth : (root.notificationVisible ? notifWidth : (root.detailExpanded ? expandedWidth : compactWidth))
+        property real targetHeight: root.launcherOpen ? launcherHeight : (root.notificationVisible ? notifHeight : (root.detailExpanded ? 420 : 45))
 
         antialiasing: true
         clip: true
         layer.enabled: true
         width: targetWidth
         height: targetHeight
-        radius: (root.detailExpanded || root.notificationVisible) ? 22 : height / 2
+        radius: (root.detailExpanded || root.notificationVisible || root.launcherOpen) ? 22 : height / 2
         color: root.walColors.special.background
         border.color: root.expanded ? "#3d4150" : "transparent"
         border.width: 1
@@ -205,6 +257,7 @@ Item {
 
             onClicked: {
                 if (isSwiping) return;
+                if (root.launcherOpen) return; // Don't toggle detail while launcher is open
 
                 if (root.notificationVisible) {
                     var invoked = false;
@@ -269,7 +322,7 @@ Item {
             id: notifContent
 
             rootWidget: root
-            visible: root.notifOpacity.value > 0
+            visible: root.notifOpacity.value > 0 && !root.launcherOpen
             opacity: root.notifOpacity.value
 
             anchors {
@@ -282,9 +335,45 @@ Item {
 
         }
 
+        // ── App Launcher content ─────────────────────────────────────
+        Loader {
+            id: launcherContentLoader
+            active: root.launcherOpen || root.launcherOpacity.value > 0
+            visible: root.launcherOpacity.value > 0
+            opacity: root.launcherOpacity.value
+            sourceComponent: Component {
+                AppLauncherContent {
+                    rootWidget: root
+                }
+            }
+
+            // When the Loader finishes creating the item, load apps + grab focus
+            onLoaded: {
+                if (item && root.launcherOpen)
+                    item.reload();
+            }
+
+            anchors {
+                fill: parent
+                leftMargin: 18
+                rightMargin: 18
+                topMargin: 14
+                bottomMargin: 14
+            }
+        }
+
+        // Global ESC handler — closes launcher from anywhere in the pill
+        Keys.onEscapePressed: function(event) {
+            if (root.launcherOpen) {
+                root.toggleLauncher();
+                event.accepted = true;
+            }
+        }
+        focus: root.launcherOpen
+
         Behavior on anchors.horizontalCenterOffset {
             NumberAnimation {
-                duration: 500
+                duration: 400
                 easing.type: Easing.OutQuint
             }
 
@@ -350,7 +439,7 @@ Item {
         centerOpen: root.notifCenterVisible
         dndEnabled: root.dndEnabled
         onDndEnabledChanged: root.dndEnabled = notifBubble.dndEnabled
-        state: (!root.notificationVisible && (root.notifCenterVisible || (root.expanded && !root.detailExpanded))) ? "visible" : ""
+        state: (!root.notificationVisible && !root.launcherOpen && (root.notifCenterVisible || (root.expanded && !root.detailExpanded))) ? "visible" : ""
         visible: state === "visible" || opacity > 0
         onClicked: {
             if (root.onToggleNotifCenter)
@@ -442,6 +531,11 @@ Item {
 
     notifHandlerConnections: Connections {
         function onNotificationArrived() {
+            // If launcher is open, close it first
+            if (root.launcherOpen) {
+                root.launcherOpacity.value = 0;
+                root.launcherOpen = false;
+            }
             // If detail view is open, close it first
             if (root.detailExpanded) {
                 detailOpacity.value = 0;
@@ -486,6 +580,37 @@ Item {
     }
 
 
+    // ── Launcher opacity + timers ─────────────────────────────────────────
+    launcherOpacity: QtObject {
+        property real value: 0.0
+
+        Behavior on value {
+            NumberAnimation {
+                duration: 250
+                easing.type: Easing.InOutQuad
+            }
+        }
+    }
+
+    Timer {
+        id: launcherFadeInTimer
+        interval: 200 // let pill expand before showing content
+        onTriggered: root.launcherOpacity.value = 1.0
+    }
+
+    Timer {
+        id: launcherCloseTimer
+        interval: 250 // let content fade out before shrinking
+        onTriggered: {
+            root.launcherOpen = false;
+            // Restore compact player
+            if (root.expanded) {
+                row.showNote.start();
+                row.showText.start();
+                row.showControls.start();
+            }
+        }
+    }
 
     detailOpacity: QtObject {
         property real value: 0
