@@ -15,10 +15,7 @@ vim.opt.termguicolors = true
 vim.opt.clipboard = "unnamedplus"
 vim.g.mapleader = " "
 vim.g.terminal_emulator = "kitty"
-vim.g.copilot_no_tab_map = true
 
-vim.keymap.set('i', '<Right>', 'copilot#Accept("<Right>")',
-  { expr = true, script = true, silent = true, replace_keycodes = false })
 
 -- =========================
 -- 🚀 Lazy.nvim setup
@@ -86,7 +83,6 @@ require("lazy").setup({
   },
   -- LSP
   { "neovim/nvim-lspconfig" },
-  { "github/copilot.vim" },
   { "sphamba/smear-cursor.nvim",
     opts = {
         cursor_color = "#FFFFFF",

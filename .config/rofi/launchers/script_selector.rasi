@@ -1,12 +1,8 @@
 /*****----- Configuration -----*****/
 configuration {
-	modi:                       "drun,window,scripts:~/.config/hypr/scripts_hypr/rofi_scripts.sh";
+	modi:                       "scripts:~/.config/hypr/scripts_hypr/rofi_scripts.sh";
     show-icons:                 true;
     icon-theme:                "Papirus-Dark";
-    display-drun:               "APPS";
-    display-window:             "WINDOWS";
-    display-scripts:            "SCRIPTS";
-	drun-display-format:        "{name}";
 	window-format:              "{w} · {t}";
 }
 
@@ -51,7 +47,7 @@ imagebox {
     padding:                     20px;
     background-color:            transparent;
     orientation:                 vertical;
-    children:                    [ "prompt", "dummy" ];
+    children:                    [ "prompt","dummy" ];
 }
 
 listbox {
@@ -65,20 +61,46 @@ listbox {
 }
 
 dummy {
-    background-color:            transparent;
+    background-color:           transparent;
 }
-
 /*****----- Inputbar -----*****/
 prompt {
     enabled:                     true;
     spacing:                     10px;
     padding:                     15px;
     border-radius:               15px;
+    margin-left:                 150px;
     blink:                       false;
     scrollbar:                   false;
     background-color:            @background-alt;
     text-color:                  @foreground;
 }
+
+inputbar {
+    enabled:                     true;
+    spacing:                     10px;
+    padding:                     15px;
+    border-radius:               10px;
+    background-color:            @background-alt;
+    text-color:                  @foreground;
+    children:                    [ "textbox-prompt-colon", "entry" ];
+}
+textbox-prompt-colon {
+    enabled:                     true;
+    expand:                      false;
+    str:                         "";
+    background-color:            inherit;
+    text-color:                  inherit;
+}
+entry {
+    enabled:                     true;
+    background-color:            inherit;
+    text-color:                  inherit;
+    cursor:                      text;
+    placeholder:                 "Search";
+    placeholder-color:           inherit;
+}
+
 
 /*****----- Listview -----*****/
 listview {
@@ -164,3 +186,22 @@ error-message {
     background-color:            @background;
     text-color:                  @foreground;
 }
+
+mode-switcher{
+    enabled:                     true;
+    spacing:                     20px;
+    background-color:            transparent;
+    text-color:                  @foreground;
+}
+button {
+    padding:                     15px;
+    border-radius:               10px;
+    background-color:            @background-alt;
+    text-color:                  inherit;
+    cursor:                      pointer;
+}
+button selected {
+    background-color:            @selected;
+    text-color:                  @foreground;
+}
+

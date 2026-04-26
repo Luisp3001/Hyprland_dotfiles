@@ -1,6 +1,6 @@
 /*****----- Configuration -----*****/
 configuration {
-	modi:                       "drun,scripts:~/.config/hypr/scripts_hypr/rofi_scripts.sh";
+	modi:                       "scripts:~/.config/hypr/scripts_hypr/rofi_scripts.sh";
     show-icons:                 true;
     icon-theme:                "Papirus-Dark";
     display-drun:               "APPS";
@@ -50,7 +50,7 @@ imagebox {
     padding:                     20px;
     background-color:            transparent;
     orientation:                 vertical;
-    children:                    [ "inputbar", "dummy", "mode-switcher" ];
+    children:                    [ "inputbar", "dummy" ];
 }
 
 listbox {

@@ -11,16 +11,16 @@ resolve_icon() {
     local dirs=(
         "$HOME/.local/share/icons/hicolor/48x48/apps"
         "$HOME/.local/share/icons/hicolor/scalable/apps"
+        "/usr/share/icons/Papirus/48x48/apps"
+        "/usr/share/icons/Papirus/128x128/apps"
+        "/usr/share/icons/Papirus/256x256/apps"
+        "/usr/share/pixmaps"
         "/usr/share/icons/hicolor/48x48/apps"
         "/usr/share/icons/hicolor/scalable/apps"
         "/usr/share/icons/hicolor/256x256/apps"
         "/usr/share/icons/hicolor/128x128/apps"
         "/usr/share/icons/hicolor/64x64/apps"
-        "/usr/share/pixmaps"
         "$HOME/.local/share/icons"
-        "/var/lib/flatpak/exports/share/icons/hicolor/scalable/apps"
-        "/var/lib/flatpak/exports/share/icons/hicolor/128x128/apps"
-        "/var/lib/flatpak/exports/share/icons/hicolor/64x64/apps"
         "$HOME/.local/share/flatpak/exports/share/icons/hicolor/scalable/apps"
     )
     for d in "${dirs[@]}"; do
@@ -32,7 +32,7 @@ resolve_icon() {
 
 parse_desktop() {
     local f="$1"
-    local name="" exec_="" icon="" nodisplay="" type="" categories="" keywords="" in_entry=0
+    local name="" exec_="" icon="" nodisplay="" type="" categories="" keywords="" terminal="false" in_entry=0
 
     while IFS= read -r line; do
         case "$line" in
@@ -48,6 +48,7 @@ parse_desktop() {
             NoDisplay=*)  nodisplay="${line#NoDisplay=}" ;;
             Categories=*) [ -z "$categories" ] && categories="${line#Categories=}" ;;
             Keywords=*)   [ -z "$keywords" ]   && keywords="${line#Keywords=}" ;;
+            Terminal=*)   [ "$terminal" = "false" ] && terminal="${line#Terminal=}" ;;
         esac
     done < "$f"
 
@@ -64,7 +65,7 @@ parse_desktop() {
     local iconpath
     iconpath=$(resolve_icon "$icon")
 
-    echo "$name|$exec_|$iconpath|$(basename "$f" .desktop)|$keywords"
+    echo "$name|$exec_|$iconpath|$(basename "$f" .desktop)|$keywords|$terminal"
 }
 
 {

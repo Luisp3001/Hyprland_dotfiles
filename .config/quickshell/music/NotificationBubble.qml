@@ -225,7 +225,7 @@ Rectangle {
             Hub.MediaCard {
                 id: mediaCard
                 Layout.fillWidth: true;
-                forceHidden: notifs.expanded && notifs.compactMode
+                forceHidden: notifs.expanded && notifs.compactMode && (root.historyModel && root.historyModel.model.count >= 2)
             }
 
 

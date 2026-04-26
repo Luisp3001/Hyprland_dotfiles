@@ -7,6 +7,7 @@ import Quickshell.Io
 Item {
     id: launcherContent
     property var rootWidget
+    property var appUsages: ({})
     readonly property int itemHeight: 48
     readonly property int searchBarHeight: 40
     readonly property int dividerHeight: 1
@@ -47,23 +48,30 @@ Item {
     function filterApps(query) {
         filteredModel.clear()
         let q = query.trim()
-        if (!q) {
-            for (let i = 0; i < allAppsModel.count; i++) {
-                let a = allAppsModel.get(i)
-                filteredModel.append({ name: a.name, exec: a.exec, icon: a.icon, desktop: a.desktop, keywords: a.keywords || "" })
+        
+        let scored = []
+        for (let i = 0; i < allAppsModel.count; i++) {
+            let a = allAppsModel.get(i)
+            let sc = 0
+            
+            if (!q) {
+                sc = (appUsages[a.name] || 0)
+                scored.push({ sc: sc, a: a })
+            } else {
+                sc = fuzzyScore(a.name, q, a.keywords)
+                if (sc > 0) {
+                    let usageBoost = (appUsages[a.name] || 0) * 0.1
+                    sc += usageBoost
+                    scored.push({ sc: sc, a: a })
+                }
             }
-        } else {
-            let scored = []
-            for (let i = 0; i < allAppsModel.count; i++) {
-                let a = allAppsModel.get(i)
-                let sc = fuzzyScore(a.name, q, a.keywords)
-                if (sc > 0) scored.push({ sc, a })
-            }
-            scored.sort((x, y) => y.sc - x.sc || x.a.name.localeCompare(y.a.name))
-            for (let i = 0; i < scored.length; i++) {
-                let a = scored[i].a
-                filteredModel.append({ name: a.name, exec: a.exec, icon: a.icon, desktop: a.desktop, keywords: a.keywords || "" })
-            }
+        }
+        
+        scored.sort((x, y) => y.sc - x.sc || x.a.name.localeCompare(y.a.name))
+        
+        for (let i = 0; i < scored.length; i++) {
+            let a = scored[i].a
+            filteredModel.append({ name: a.name, exec: a.exec, icon: a.icon, desktop: a.desktop, keywords: a.keywords || "", terminal: a.terminal || "false" })
         }
         appList.currentIndex = 0
     }
@@ -71,7 +79,16 @@ Item {
     function launchApp(idx) {
         if (idx < 0 || idx >= filteredModel.count) return
         let a = filteredModel.get(idx)
-        launchProc.launchCmd = a.exec
+        
+        logUsageProc.appName = a.name
+        logUsageProc.running = false
+        logUsageProc.running = true
+
+        let execCmd = a.exec
+        if (a.terminal === "true" || a.terminal === "True") {
+            execCmd = "kitty -e zsh -i -c '" + a.exec + "'"
+        }
+        launchProc.launchCmd = execCmd
         launchProc.running = false
         launchProc.running = true
         if (rootWidget.launcherOpen) {
@@ -81,6 +98,8 @@ Item {
 
     function reload() {
         searchInput.text = ""
+        getUsageProc.running = false
+        getUsageProc.running = true
         filterApps("")
         appsProc.running = false
         appsProc.running = true
@@ -96,6 +115,29 @@ Item {
 
     // ─── Processes ────────────────────────────────────────────────────────────
     Process {
+        id: getUsageProc
+        command: ["bash", "-c", "cat ~/.cache/quickshell_app_usage.json 2>/dev/null || echo '{}'"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    launcherContent.appUsages = JSON.parse(this.text)
+                } catch(e) {
+                    launcherContent.appUsages = {}
+                }
+                if (allAppsModel.count > 0) {
+                    launcherContent.filterApps(searchInput.text)
+                }
+            }
+        }
+    }
+
+    Process {
+        id: logUsageProc
+        property string appName: ""
+        command: ["python3", "-c", "import json, sys, os\nf = os.path.expanduser('~/.cache/quickshell_app_usage.json')\nd = {}\ntry:\n with open(f, 'r') as file: d = json.load(file)\nexcept: pass\napp = sys.argv[1]\nd[app] = d.get(app, 0) + 1\nwith open(f, 'w') as file: json.dump(d, file)", appName]
+    }
+
+    Process {
         id: appsProc
         command: ["bash", "-c", "bash $HOME/.config/quickshell/components/get_app.sh"]
         stdout: StdioCollector {
@@ -105,7 +147,7 @@ Item {
                 for (let i = 0; i < lines.length; i++) {
                     let p = lines[i].split("|")
                     if (p.length >= 2 && p[0])
-                        allAppsModel.append({ name: p[0], exec: p[1], icon: p[2] || "", desktop: p[3] || "", keywords: p[4] || "" })
+                        allAppsModel.append({ name: p[0], exec: p[1], icon: p[2] || "", desktop: p[3] || "", keywords: p[4] || "", terminal: p[5] || "false" })
                 }
                 filterApps(searchInput.text)
             }
