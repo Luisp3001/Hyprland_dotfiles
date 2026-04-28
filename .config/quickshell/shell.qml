@@ -242,6 +242,9 @@ ShellRoot {
         }
     }
 
+
+    // (Airdrop has no dismiss overlay — it uses ESC, close button, or bubble to toggle)
+
     // 3. Left Modules Window (Launcher + Workspaces)
     PanelWindow {
         anchors { top: true; left: true }

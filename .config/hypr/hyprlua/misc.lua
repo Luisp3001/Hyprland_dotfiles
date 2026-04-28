@@ -1,0 +1,9 @@
+hl.config({
+    misc = {
+        vrr = 2
+    },
+    
+    render = {
+        direct_scanout = 2
+    }
+})

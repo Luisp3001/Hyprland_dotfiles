@@ -65,16 +65,6 @@ Item {
                 color: "#1793d1" // Arch Linux Blue
                 font.pixelSize: 30
             }
-
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    Quickshell.execDetached ({
-                        command: ["bash", "-c", "~/.config/hypr/scripts_hypr/launcher.sh"]
-                    });
-                }
-            }
         }
 
         // ── Workspaces Module ────────────────────────────────────────────────
@@ -199,9 +189,9 @@ Item {
                             hoverEnabled: true
                             onClicked: {
                                 if (parent.isSpecial) {
-                                    Hyprland.dispatch("togglespecialworkspace " + parent.displayName);
+                                    Hyprland.dispatch("togglespecialworkspace", parent.displayName);
                                 } else {
-                                    Hyprland.dispatch("workspace " + modelData.name);
+                                    Hyprland.dispatch("workspace", modelData.name);
                                 }
                             }
                         }

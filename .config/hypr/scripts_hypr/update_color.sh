@@ -11,5 +11,6 @@ magick "${ruta}[0]" -resize 800x600 ~/.cache/wallpaper.jpg
 wal -q -i "$ruta" -n
 
 /home/luisp/.config/hypr/scripts_hypr/colors.sh
+/home/luisp/.config/hypr/scripts_hypr/colors_lua.sh
 /home/luisp/.config/hypr/scripts_hypr/update_sddm.sh
 notify-send -i /home/luisp/Pictures/icon/arch.png " Sistema" " Colores actualizados."
