@@ -1,6 +1,6 @@
-import "../notificationcenter"
-import "../components" as Lib
-import "../notificationcenter" as Hub
+import "../../notificationcenter"
+import "../../components" as Lib
+import "../../notificationcenter" as Hub
 import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Controls
@@ -113,9 +113,9 @@ Rectangle {
             id: bellIcon
 
             source: {
-                if (root.dndEnabled) return "../assets/icons/bell_dnd.svg";
-                if (root.historyModel && root.historyModel.model.count > 0) return "../assets/icons/new_notification.svg";
-                return "../assets/icons/bell.svg";
+                if (root.dndEnabled) return "../../assets/icons/bell_dnd.svg";
+                if (root.historyModel && root.historyModel.model.count > 0) return "../../assets/icons/new_notification.svg";
+                return "../../assets/icons/bell.svg";
             }
             anchors.centerIn: parent
             sourceSize: Qt.size(20, 20)

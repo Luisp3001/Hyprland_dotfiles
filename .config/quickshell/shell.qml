@@ -3,7 +3,10 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Notifications
-import "music"
+import "DynamicIsland"
+import "DynamicIsland/volume"
+import "DynamicIsland/notifications"
+import "DynamicIsland/airdrop"
 import "Wallpaper"
 import "HyprQuickFrame"
 import "notificationcenter"
@@ -193,6 +196,10 @@ ShellRoot {
         function toggleLauncher(): void {
             mWidget.toggleLauncher();
         }
+
+        function toggleOverview(): void {
+            mWidget.toggleOverview();
+        }
     }
 
     // ── Top Bar Windowing Strategy ─────────────────────────────────────
@@ -242,6 +249,24 @@ ShellRoot {
         }
     }
 
+    // 2c. Overview Dismiss Overlay (click outside pill to close overview)
+    PanelWindow {
+        anchors { top: true; bottom: true; left: true; right: true }
+        visible: mWidget.overviewOpen
+        exclusionMode: ExclusionMode.Ignore
+        WlrLayershell.layer: WlrLayer.Top
+        WlrLayershell.namespace: "overview-dismiss"
+        color: "transparent"
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: mWidget.toggleOverview()
+        }
+    }
+
+
+    // (Airdrop has no dismiss overlay — it uses ESC, close button, or bubble to toggle)
+
     // 3. Left Modules Window (Launcher + Workspaces)
     PanelWindow {
         anchors { top: true; left: true }
@@ -270,10 +295,10 @@ ShellRoot {
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.namespace: "quickshell"
         WlrLayershell.layer:     WlrLayer.Top
-        WlrLayershell.keyboardFocus: mWidget.launcherOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: (mWidget.launcherOpen || mWidget.overviewOpen) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
         mask: Region { item: mWidget.maskItem }
 
-        MusicWidget {
+        DynamicIslandWidget {
             id: mWidget
             anchors.fill: parent
             walColors: shell.walColors

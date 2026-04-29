@@ -8,7 +8,7 @@ import Quickshell.Hyprland
 Item {
     id: root
     
-    // Performance Fix: Avoid resizing the OS window on every frame during workspace animations.
+    // Performance Fix: Avoid resizing the OS window on every frame during  animations.
     property real targetImplicitWidth: layout.implicitWidth + 20
     property real currentImplicitWidth: targetImplicitWidth
 
@@ -64,16 +64,6 @@ Item {
                 text: "󰣇"
                 color: "#1793d1" // Arch Linux Blue
                 font.pixelSize: 30
-            }
-
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    Quickshell.execDetached ({
-                        command: ["bash", "-c", "~/.config/hypr/scripts_hypr/launcher.sh"]
-                    });
-                }
             }
         }
 
@@ -199,9 +189,9 @@ Item {
                             hoverEnabled: true
                             onClicked: {
                                 if (parent.isSpecial) {
-                                    Hyprland.dispatch("togglespecialworkspace " + parent.displayName);
+                                    Hyprland.dispatch("hl.dsp.focus({workspace = " + parent.displayName + "})");
                                 } else {
-                                    Hyprland.dispatch("workspace " + modelData.name);
+                                    Hyprland.dispatch("hl.dsp.focus({workspace = " + parent.displayName + "})");
                                 }
                             }
                         }
