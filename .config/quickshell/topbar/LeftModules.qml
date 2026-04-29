@@ -8,7 +8,7 @@ import Quickshell.Hyprland
 Item {
     id: root
     
-    // Performance Fix: Avoid resizing the OS window on every frame during workspace animations.
+    // Performance Fix: Avoid resizing the OS window on every frame during  animations.
     property real targetImplicitWidth: layout.implicitWidth + 20
     property real currentImplicitWidth: targetImplicitWidth
 
@@ -189,9 +189,9 @@ Item {
                             hoverEnabled: true
                             onClicked: {
                                 if (parent.isSpecial) {
-                                    Hyprland.dispatch("togglespecialworkspace", parent.displayName);
+                                    Hyprland.dispatch("hl.dsp.focus({workspace = " + parent.displayName + "})");
                                 } else {
-                                    Hyprland.dispatch("workspace", modelData.name);
+                                    Hyprland.dispatch("hl.dsp.focus({workspace = " + parent.displayName + "})");
                                 }
                             }
                         }

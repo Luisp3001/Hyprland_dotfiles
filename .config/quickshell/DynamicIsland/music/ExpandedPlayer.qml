@@ -641,8 +641,8 @@ Item {
                             onPressed: (mouse) => updateVal(mouse.y)
                             onPositionChanged: (mouse) => updateVal(mouse.y)
                             onReleased: {
-                                expandedPlayer.execCmd(`$HOME/.config/quickshell/music/music_eq/equalizer.sh set_band ${index + 1} ${parent.dragValue.toFixed(1)}`);
-                                expandedPlayer.execCmd(`$HOME/.config/quickshell/music/music_eq/equalizer.sh apply`);
+                                expandedPlayer.execCmd(`$HOME/.config/quickshell/DynamicIsland/music/music_eq/equalizer.sh set_band ${index + 1} ${parent.dragValue.toFixed(1)}`);
+                                expandedPlayer.execCmd(`$HOME/.config/quickshell/DynamicIsland/music/music_eq/equalizer.sh apply`);
                             }
                         }
                     }
@@ -712,7 +712,7 @@ Item {
                                 if (col) col.sliderVal = vals[i];
                             }
                             expandedPlayer.triggerEqLightning();
-                            expandedPlayer.execCmd(`$HOME/.config/quickshell/music/music_eq/equalizer.sh preset ${modelData}`);
+                            expandedPlayer.execCmd(`$HOME/.config/quickshell/DynamicIsland/music/music_eq/equalizer.sh preset ${modelData}`);
                         }
                     }
                 }

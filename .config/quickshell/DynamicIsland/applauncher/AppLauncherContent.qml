@@ -306,7 +306,7 @@ Item {
                         Image {
                             visible: appIcon.status !== Image.Ready
                             anchors.fill: parent
-                            source: "../assets/icons/package.png"
+                            source: "../../assets/icons/package.png"
                             fillMode: Image.PreserveAspectFit
                             smooth: true
                             asynchronous: true
