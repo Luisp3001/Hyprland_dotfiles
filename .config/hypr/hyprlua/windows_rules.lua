@@ -72,6 +72,8 @@ hl.window_rule({
   },
   border_size = 1,
   rounding = 20,
+  move = "cursor_x cursor_y",
+  float = true,
   border_color = "rgba(ffffffff)",
   no_shadow = true
 })

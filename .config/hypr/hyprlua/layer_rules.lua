@@ -8,6 +8,7 @@ hl.layer_rule({ match = { class = "dolphin" }, blur = true })
 hl.layer_rule({ match = { namespace = "launcher-dismiss" }, blur = false, ignore_alpha = 0.1 })
 hl.layer_rule({ match = { namespace = "gtk-layer-shell" }, blur = false })
 hl.layer_rule({ match = { namespace = "gtk4-layer-shell" }, blur = false })
+hl.layer_rule({ match = { namespace = "overview-dismiss" }, blur = false })
 
 hl.workspace_rule({ workspace = "w[tv1]", gaps_out = 0, gaps_in = 0 })
 hl.workspace_rule({ workspace = "f[1]",   gaps_out = 0, gaps_in = 0 })
