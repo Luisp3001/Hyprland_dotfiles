@@ -4,11 +4,13 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
 import Quickshell.Wayland
+import "../components" as Lib
 import "music"
 import "airdrop"
 import "applauncher"
 import "notifications"
 import "overview"
+import "screenrec"
 import "volume"
 
 // MusicWidget – standalone component (no ShellRoot).
@@ -37,6 +39,41 @@ Item {
     property var airdropOpacity: _airdropOpacity
     // ── Workspace Overview state ─────────────────────────────────────────
     property bool overviewOpen: false
+    // ── Screen Recording state ──────────────────────────────────────────
+    property string screenRecState: "idle"
+    property int screenRecElapsed: 0
+    property bool screenRecOpen: false
+    property bool screenRecMinimized: true
+
+    readonly property string screenRecScript: Quickshell.env("HOME") + "/.config/quickshell/DynamicIsland/screenrec/wl_screenrec_ctl.sh"
+
+    function screenRecRunCtl(action) {
+        Quickshell.execDetached(["bash", screenRecScript, action]);
+    }
+
+    Lib.CommandPoll {
+        id: screenRecPoll
+        interval: 500
+        command: ["bash", root.screenRecScript, "status"]
+        parse: function(out) { return String(out ?? "").trim(); }
+        onUpdated: {
+            try {
+                var o = JSON.parse(screenRecPoll.text || "{}");
+                root.screenRecState = o.state || "idle";
+                if (typeof o.elapsed_sec === "number")
+                    root.screenRecElapsed = Math.floor(o.elapsed_sec);
+                else
+                    root.screenRecElapsed = parseInt(o.elapsed_sec, 10) || 0;
+                
+                if (root.screenRecState === "idle" && root.screenRecOpen) {
+                    root.toggleScreenRec();
+                }
+            } catch (e) {
+                root.screenRecState = "idle";
+                root.screenRecElapsed = 0;
+            }
+        }
+    }
     // ── Notification system ────────────────────────────────────────────
     required property var notifHandler
     property var server: null
@@ -70,6 +107,9 @@ Item {
 
     property var overviewFadeInTimer: islandTimers.overviewFadeInTimer
     property var overviewCloseTimer: islandTimers.overviewCloseTimer
+    property var _screenRecOpacity: islandTimers._screenRecOpacity
+    property var screenRecFadeInTimer: islandTimers.screenRecFadeInTimer
+    property var screenRecCloseTimer: islandTimers.screenRecCloseTimer
     property var airdropFadeInTimer: islandTimers.airdropFadeInTimer
     property var airdropCloseTimer: islandTimers.airdropCloseTimer
     property var airdropMinimizeTimer: islandTimers.airdropMinimizeTimer
@@ -124,6 +164,10 @@ Item {
                 root._airdropOpacity.value = 0;
                 root.airdropOpen = false;
             }
+            if (root.screenRecOpen) {
+                root._screenRecOpacity.value = 0;
+                root.screenRecOpen = false;
+            }
             root.overviewOpen = true;
         }
     }
@@ -168,6 +212,10 @@ Item {
                 root.overviewOpacity.value = 0;
                 root.overviewOpen = false;
             }
+            if (root.screenRecOpen) {
+                root._screenRecOpacity.value = 0;
+                root.screenRecOpen = false;
+            }
             root.airdropMinimized = false;
             root.airdropOpen = true;
         }
@@ -193,6 +241,10 @@ Item {
         if (root.launcherOpen) {
             root.launcherOpacity.value = 0;
             root.launcherOpen = false;
+        }
+        if (root.screenRecOpen) {
+            root._screenRecOpacity.value = 0;
+            root.screenRecOpen = false;
         }
         // IMPORTANT: set airdropOpen FIRST so the Loader stays active
         // (active = airdropOpen || opacity > 0 || airdropMinimized).
@@ -237,6 +289,10 @@ Item {
                 root.overviewOpacity.value = 0;
                 root.overviewOpen = false;
             }
+            if (root.screenRecOpen) {
+                root._screenRecOpacity.value = 0;
+                root.screenRecOpen = false;
+            }
             root.launcherOpen = true;
         }
     }
@@ -250,6 +306,33 @@ Item {
                 if (launcherContentLoader.item)
                     launcherContentLoader.item.reload();
             });
+        }
+    }
+
+    // ── Screen Recorder toggle ──────────────────────────────────────────
+    function toggleScreenRec() {
+        if (root.screenRecOpen) {
+            root._screenRecOpacity.value = 0.0;
+            screenRecCloseTimer.start();
+            root.screenRecMinimized = true;
+        } else {
+            if (root.detailExpanded) { detailOpacity.value = 0; root.detailExpanded = false; root.eqExpanded = false; }
+            if (root.notificationVisible) { root.notifOpacity.value = 0; root.notificationVisible = false; }
+            if (root.launcherOpen) { root.launcherOpacity.value = 0; root.launcherOpen = false; }
+            if (root.airdropOpen) { root._airdropOpacity.value = 0; root.airdropOpen = false; }
+            if (root.overviewOpen) { root.overviewOpacity.value = 0; root.overviewOpen = false; }
+            
+            root.screenRecMinimized = false;
+            root.screenRecOpen = true;
+        }
+    }
+
+    onScreenRecOpenChanged: {
+        if (screenRecOpen) {
+            screenRecFadeInTimer.start();
+            row.hideControls.start();
+            row.hideText.start();
+            row.hideNote.start();
         }
     }
 
@@ -267,6 +350,8 @@ Item {
         if (root.airdropOpen)
             return;
         if (root.overviewOpen)
+            return;
+        if (root.screenRecOpen)
             return;
 
         if (root.detailExpanded) {
@@ -307,19 +392,46 @@ Item {
         row.showNote.start();
         row.showText.start();
         row.showControls.start();
+
+        Qt.callLater(function() {
+            try {
+                var o = JSON.parse(screenRecPoll.text || "{}");
+                root.screenRecState = o.state || "idle";
+                if (typeof o.elapsed_sec === "number")
+                    root.screenRecElapsed = Math.floor(o.elapsed_sec);
+                else
+                    root.screenRecElapsed = parseInt(o.elapsed_sec, 10) || 0;
+            } catch (e) {}
+        });
     }
     implicitWidth: 860
     // Fixed height: the mask handles click-through so this never blocks input.
     // Eliminates the jitter from Hyprland re-laying-out the window mid-animation.
     implicitHeight: 700
 
+    // Stack screen-rec bubble below AirdropBubble when both would sit on the left
+    readonly property bool screenRecStackUnderAirdrop: {
+        if (root.notificationVisible || root.notifCenterVisible)
+            return false;
+
+        var hasActivity = (root.airdropLsState === "scanning" || root.airdropLsState === "ready" || root.airdropLsState === "sending" || root.airdropLsState === "sent" || root.airdropLsState === "error");
+        return root.airdropMinimized && hasActivity && !root.airdropOpen;
+    }
+
     property Item maskItem: maskContainer
+
+    // Exclude hidden screen-rec bubble so idle geometry does not widen the input mask.
+    readonly property real _maskScreenRecLeft: screenRecBubble.visible ? screenRecBubble.x : 999999
+    readonly property real _maskScreenRecTop: screenRecBubble.visible ? screenRecBubble.y : 999999
+    readonly property real _maskScreenRecRight: screenRecBubble.visible ? (screenRecBubble.x + screenRecBubble.width) : -999999
+    readonly property real _maskScreenRecBottom: screenRecBubble.visible ? (screenRecBubble.y + screenRecBubble.height) : -999999
+
     Item {
         id: maskContainer
-        x: Math.min(pill.x, notifBubble.x, airdropBubble.x)
-        y: Math.min(pill.y, notifBubble.y, airdropBubble.y)
-        width: Math.max(pill.x + pill.width, notifBubble.x + notifBubble.width, airdropBubble.x + airdropBubble.width) - x
-        height: Math.max(pill.y + pill.height, notifBubble.y + notifBubble.height, airdropBubble.y + airdropBubble.height) - y
+        x: Math.min(pill.x, notifBubble.x, airdropBubble.x, root._maskScreenRecLeft)
+        y: Math.min(pill.y, notifBubble.y, airdropBubble.y, root._maskScreenRecTop)
+        width: Math.max(pill.x + pill.width, notifBubble.x + notifBubble.width, airdropBubble.x + airdropBubble.width, root._maskScreenRecRight) - x
+        height: Math.max(pill.y + pill.height, notifBubble.y + notifBubble.height, airdropBubble.y + airdropBubble.height, root._maskScreenRecBottom) - y
     }
 
     // ── Music pill ────────────────────────────────────────────────
@@ -339,7 +451,7 @@ Item {
         centerOpen: root.notifCenterVisible
         dndEnabled: root.dndEnabled
         onDndEnabledChanged: root.dndEnabled = notifBubble.dndEnabled
-        state: (!root.notificationVisible && !root.launcherOpen && !root.airdropOpen && !root.overviewOpen && (root.notifCenterVisible || (root.expanded && !root.detailExpanded))) ? "visible" : ""
+        state: (!root.notificationVisible && !root.launcherOpen && !root.airdropOpen && !root.overviewOpen && !root.screenRecOpen && (root.notifCenterVisible || (root.expanded && !root.detailExpanded))) ? "visible" : ""
         visible: state === "visible" || opacity > 0
         onClicked: {
             if (root.onToggleNotifCenter)
@@ -382,8 +494,8 @@ Item {
         fileName: root.airdropFileName
         statusMessage: root.airdropStatusMsg
         state: {
-            // Hide the bubble if notification or notif center is visible
-            if (root.notificationVisible || root.notifCenterVisible) return "";
+            // Hide the bubble if other main widgets are expanded
+            if (root.notificationVisible || root.notifCenterVisible || root.detailExpanded || root.launcherOpen || root.overviewOpen || root.screenRecOpen) return "";
             
             // Show when minimized and there's an active transfer
             var hasActivity = (root.airdropLsState === "scanning" || root.airdropLsState === "ready" ||
@@ -418,7 +530,53 @@ Item {
         }
     }
 
+    // ── Screen recording bubble (wl-screenrec + wl_screenrec_ctl.sh) ──
+    ScreenRecBubble {
+        id: screenRecBubble
 
+        z: 2
+        walColors: root.walColors
+        rootWidget: root
+
+        anchors {
+            top: root.screenRecStackUnderAirdrop ? airdropBubble.bottom : pill.top
+            topMargin: root.screenRecStackUnderAirdrop ? 8 : 0
+            horizontalCenter: parent.horizontalCenter
+            horizontalCenterOffset: {
+                var hasActivity = (root.screenRecState === "recording" || root.screenRecState === "paused");
+                var showBubble = (root.screenRecMinimized && hasActivity && !root.screenRecOpen);
+                if (showBubble)
+                    return -212.5;
+
+                return -150;
+            }
+        }
+
+        state: {
+            if (root.notificationVisible || root.notifCenterVisible || root.detailExpanded || root.launcherOpen || root.airdropOpen || root.overviewOpen) return "";
+            var hasActivity = (root.screenRecState === "recording" || root.screenRecState === "paused");
+            if (root.screenRecMinimized && hasActivity && !root.screenRecOpen) return "visible";
+            return "";
+        }
+        visible: state === "visible" || opacity > 0
+        onClicked: {
+            root.toggleScreenRec();
+        }
+
+        Behavior on anchors.topMargin {
+            NumberAnimation {
+                duration: 400
+                easing.type: Easing.OutQuint
+            }
+        }
+
+        Behavior on anchors.horizontalCenterOffset {
+            NumberAnimation {
+                duration: 500
+                easing.type: Easing.OutQuint
+            }
+        }
+    }
 
     IslandTimers {
         id: islandTimers
