@@ -3,7 +3,7 @@ hl.window_rule({
   match = {
     class = "kitty"
   },
-  float = true,
+  float = false,
   size = "800 400",
   center = true
 })
@@ -102,5 +102,4 @@ local suppressMaximizeRule = hl.window_rule({
 
     suppress_event = "maximize",
 })
-
 

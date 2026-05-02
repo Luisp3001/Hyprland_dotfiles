@@ -157,7 +157,7 @@ Item {
     Process {
         id: launchProc
         property string launchCmd: ""
-        command: ["bash", "-c", "nohup sh -c " + JSON.stringify(launchCmd) + " >/dev/null 2>&1 &"]
+        command: ["hyprctl", "dispatch", "hl.dsp.exec_cmd([[" + launchCmd + "]])"]
     }
 
     // ─── UI ───────────────────────────────────────────────────────────────────

@@ -47,12 +47,16 @@ RESP=$(curl -sk --max-time 30 -X POST "https://$TARGET:$PORT/api/localsend/v2/pr
 SESSION=$(echo "$RESP" | python3 -c "import sys,json; raw=sys.stdin.read().strip(); d=json.loads(raw) if raw else {}; print(d.get('sessionId',''))" 2>/dev/null)
 
 if [ -z "$SESSION" ]; then
-    notify-send "LocalSend" "Rejected or timed out" -i dialog-error; exit 1
+    echo "REJECTED"
+    notify-send "LocalSend" "Rejected or timed out" -i dialog-error
+    exit 1
 fi
 
-# Now upload each file using curl, processing response with Python
+# Now upload each file using python http.client for progress reporting
 python3 - "$PAYLOAD" "$RESP" "$TARGET" "$SESSION" << 'EOF'
 import sys, json, os, subprocess
+import http.client
+import ssl
 
 try:
     payload_data = json.loads(sys.argv[1])
@@ -65,31 +69,60 @@ try:
     
     success_count = 0
     fail_count = 0
-    total = 0
     
+    total_size = 0
+    accepted_fids = []
     for fid, token in accepted_files.items():
-        if not token:
-            continue
-        f_info = files_map.get(fid)
-        if not f_info:
-            continue
+        if token and fid in files_map:
+            total_size += files_map[fid]["meta"]["size"]
+            accepted_fids.append((fid, token))
             
-        total += 1
+    if not accepted_fids:
+        print("REJECTED", flush=True)
+        sys.exit(1)
+
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    uploaded_total = 0
+
+    for fid, token in accepted_fids:
+        f_info = files_map[fid]
         path = f_info["path"]
         mime = f_info["meta"]["fileType"]
+        f_size = f_info["meta"]["size"]
         
-        # Call curl directly to upload this file
-        url = f"https://{target}:53317/api/localsend/v2/upload?sessionId={session}&fileId={fid}&token={token}"
-        # using subprocess to properly handle paths with spaces
-        cmd = ["curl", "-sk", "--max-time", "120", "-X", "POST", url, "-H", f"Content-Type: {mime}", "--data-binary", f"@{path}"]
-        result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if result.returncode == 0:
-            success_count += 1
-        else:
+        try:
+            conn = http.client.HTTPSConnection(target, 53317, context=ctx, timeout=30)
+            conn.putrequest("POST", f"/api/localsend/v2/upload?sessionId={session}&fileId={fid}&token={token}")
+            conn.putheader("Content-Type", mime)
+            conn.putheader("Content-Length", str(f_size))
+            conn.endheaders()
+            
+            with open(path, "rb") as f:
+                while True:
+                    chunk = f.read(262144) # 256KB chunks
+                    if not chunk: break
+                    conn.send(chunk)
+                    uploaded_total += len(chunk)
+                    if total_size > 0:
+                        prog = (uploaded_total / total_size) * 100
+                        print(f"PROGRESS:{prog:.2f}", flush=True)
+            
+            resp = conn.getresponse()
+            if resp.status == 200:
+                success_count += 1
+            else:
+                fail_count += 1
+        except Exception as e:
+            print("CANCELLED", flush=True)
             fail_count += 1
+            break
 
+    total = len(accepted_fids)
     if total == 1:
-        fname = os.path.basename(files_map[list(files_map.keys())[0]]["path"])
+        fname = os.path.basename(files_map[accepted_fids[0][0]]["path"])
         if success_count == 1:
             os.system(f'notify-send "LocalSend" "Sent: {fname}" -i emblem-ok-symbolic')
         else:
@@ -103,6 +136,7 @@ try:
             sys.exit(1)
 
 except Exception as e:
+    print("CANCELLED", flush=True)
     os.system('notify-send "LocalSend" "Upload error" -i dialog-error')
     sys.exit(1)
 EOF

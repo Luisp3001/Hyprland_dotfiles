@@ -74,6 +74,27 @@ RowLayout {
             scrollAnim.stop();
             trackLabel.x = 0;
         }
+
+        function onLauncherOpenChanged() {
+            isTransitioning = true;
+            transitionTimer.restart();
+            scrollAnim.stop();
+            trackLabel.x = 0;
+        }
+
+        function onAirdropOpenChanged() {
+            isTransitioning = true;
+            transitionTimer.restart();
+            scrollAnim.stop();
+            trackLabel.x = 0;
+        }
+
+        function onOverviewOpenChanged() {
+            isTransitioning = true;
+            transitionTimer.restart();
+            scrollAnim.stop();
+            trackLabel.x = 0;
+        }
     }
 
     // Music note + track info

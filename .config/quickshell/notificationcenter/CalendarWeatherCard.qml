@@ -21,11 +21,16 @@ Lib.Card {
     id: weather
     running: root.active && root.visible
     interval: 60000
-    command: ["bash","-lc", "$HOME/.config/quickshell/notificationcenter/lib/weather.sh"]
+    command: ["bash", "-c", "curl -s 'wttr.in/?format=%t|%c|%C'"]
     parse: function(out) {
       try {
-        var d = JSON.parse(String(out))
-        return { temp: d.temp ?? "--", icon: d.icon ?? "☁", desc: d.desc ?? "—" }
+        var parts = String(out).trim().split("|")
+        if (parts.length >= 3) {
+          var tempStr = parts[0].trim()
+          if (tempStr.startsWith("+")) tempStr = tempStr.substring(1)
+          return { temp: tempStr, icon: parts[1].trim(), desc: parts[2].trim() }
+        }
+        return { temp: "--", icon: "☁", desc: "—" }
       } catch(e) {
         return { temp:"--", icon:"☁", desc:"Error" }
       }

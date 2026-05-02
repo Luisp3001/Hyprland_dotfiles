@@ -98,15 +98,6 @@ Item {
     property var volumeHideTimer
     // ── Detail opacity (referenced from visual tree) ──────────────────
     property var detailOpacity: islandTimers.detailOpacity
-    // Performance Fix: Use a stable width (440px) to avoid horizontal window jumps.
-    // However, height remains dynamic to release screen real estate and fix click-through.
-    property real targetImplicitHeight: {
-        if (root.notifCenterVisible)
-            return 690;
-
-        var h = pill.targetHeight;
-        return h + root.verticalPadding + 15;
-    }
 
     // ── Workspace Overview toggle ─────────────────────────────────────────
     function toggleOverview() {
@@ -261,7 +252,7 @@ Item {
             });
         }
     }
-    property real currentImplicitHeight: targetImplicitHeight
+
 
     function toggleDetail() {
         if (!root.hasSpotify)
@@ -318,6 +309,9 @@ Item {
         row.showControls.start();
     }
     implicitWidth: 860
+    // Fixed height: the mask handles click-through so this never blocks input.
+    // Eliminates the jitter from Hyprland re-laying-out the window mid-animation.
+    implicitHeight: 700
 
     property Item maskItem: maskContainer
     Item {
@@ -326,23 +320,6 @@ Item {
         y: Math.min(pill.y, notifBubble.y, airdropBubble.y)
         width: Math.max(pill.x + pill.width, notifBubble.x + notifBubble.width, airdropBubble.x + airdropBubble.width) - x
         height: Math.max(pill.y + pill.height, notifBubble.y + notifBubble.height, airdropBubble.y + airdropBubble.height) - y
-    }
-
-    implicitHeight: currentImplicitHeight
-    onTargetImplicitHeightChanged: {
-        if (targetImplicitHeight > currentImplicitHeight)
-            currentImplicitHeight = targetImplicitHeight; // Expand instantly
-
-        shrinkTimer.restart();
-    }
-
-    Timer {
-        id: shrinkTimer
-
-        interval: 650
-        onTriggered: {
-            root.currentImplicitHeight = root.targetImplicitHeight;
-        }
     }
 
     // ── Music pill ────────────────────────────────────────────────

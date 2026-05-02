@@ -13,7 +13,7 @@ hl.config({
 
         resize_on_border = true,
         allow_tearing = true,
-        layout = "dwindle",
+        layout = "scrolling",
     },
 
     decoration = {
@@ -46,8 +46,17 @@ hl.config({
 
     dwindle = {
         preserve_split = true
-    }
+    },
+
+    master = {
+        new_status = "master",
+    },
+
+    scrolling = {
+        fullscreen_on_one_column = true,
+    },
 })
+
 
 hl.curve("iosEaseInOut",   { type = "bezier", points = { {0.25, 0.1},    {0.25, 1}    } })
 hl.curve("iosSlide", { type = "bezier", points = { {0.33, 1}, {0.68, 1}    } })

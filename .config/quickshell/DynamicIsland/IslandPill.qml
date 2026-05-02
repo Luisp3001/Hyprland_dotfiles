@@ -268,22 +268,25 @@ Rectangle {
 
     Behavior on width {
         NumberAnimation {
-            duration: 600
-            easing.type: Easing.InOutQuint
+            duration: 400
+            easing.type: Easing.OutBack
+            easing.overshoot: 1.2
         }
     }
 
     Behavior on height {
         NumberAnimation {
-            duration: 600
-            easing.type: Easing.InOutQuint
+            duration: 400
+            easing.type: Easing.OutBack
+            easing.overshoot: 1.2
         }
     }
 
     Behavior on radius {
         NumberAnimation {
-            duration: 600
-            easing.type: Easing.InOutQuint
+            duration: 400
+            easing.type: Easing.OutBack
+            easing.overshoot: 1.2
         }
     }
 

@@ -1,5 +1,6 @@
 import Qt.labs.folderlistmodel
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Effects
 import QtQuick.Layouts
 import Quickshell
@@ -12,11 +13,50 @@ QtObject {
     id: root
 
     property bool active: false
+    property var tagsDb: ({})
+    property string searchQuery: ""
+    property bool isTagging: false
     property var syncThumbnailsProcess
 
     syncThumbnailsProcess: Process {
         command: ["/home/luisp/.config/quickshell/generate_thumbnails.sh"]
         running: false
+    }
+
+    property var taggingStatusProcess
+
+    taggingStatusProcess: Process {
+        command: ["bash", "-c", "while true; do if [ -f ~/.cache/wallpaper/tagger.lock ]; then echo '1'; else echo '0'; fi; sleep 2; done"]
+        running: root.active
+        stdout: SplitParser {
+            splitMarker: ""
+            onRead: (data) => {
+                let text = data.trim();
+                if (text === "1") root.isTagging = true;
+                else if (text === "0") root.isTagging = false;
+            }
+        }
+    }
+
+    property var loadTagsProcess
+
+    loadTagsProcess: Process {
+        command: ["cat", Quickshell.env("HOME") + "/.cache/wallpaper/tags.json"]
+        running: false
+
+        stdout: SplitParser {
+            splitMarker: ""
+            onRead: (data) => {
+                let text = data.trim();
+                if (text.length > 0) {
+                    try {
+                        root.tagsDb = JSON.parse(text);
+                    } catch (e) {
+                        console.log("Failed to parse tags.json:", e);
+                    }
+                }
+            }
+        }
     }
 
     property var currentWallProcess
@@ -91,6 +131,7 @@ QtObject {
         property bool processFinished: false
         property bool weProcessFinished: false
         property bool isImageTab: true
+        property bool searchFocused: false
         readonly property string homeDir: "file://" + Quickshell.env("HOME")
         readonly property string thumbDir: homeDir + "/.cache/wallpaper"
         readonly property string srcDir: Quickshell.env("HOME") + "/wallpaper"
@@ -103,6 +144,41 @@ QtObject {
         readonly property int wpSpacing: 5
         readonly property real skewFactor: -0.20
         readonly property color accentGold: "#C8A961"
+
+        // Helper: get tags for a filename
+        function getTagsForFile(fileName) {
+            if (root.tagsDb && root.tagsDb[fileName])
+                return root.tagsDb[fileName];
+            return [];
+        }
+
+        // Helper: check if a filename matches the current search
+        function matchesSearch(fileName) {
+            let q = root.searchQuery.trim().toLowerCase();
+            if (q === "") return true;
+            let terms = q.split(/\s+/);
+            let tags = getTagsForFile(fileName);
+            let tagStr = tags.join(" ");
+            let nameStr = fileName.toLowerCase();
+            // Every search term must match at least one tag or the filename
+            for (let t of terms) {
+                if (tagStr.indexOf(t) === -1 && nameStr.indexOf(t) === -1)
+                    return false;
+            }
+            return true;
+        }
+
+        // Rebuild the filtered index map whenever search/model changes
+        property var filteredIndices: []
+        function rebuildFilter() {
+            let indices = [];
+            for (let i = 0; i < folderModel.count; i++) {
+                let fname = folderModel.get(i, "fileName");
+                if (matchesSearch(fname))
+                    indices.push(i);
+            }
+            filteredIndices = indices;
+        }
 
         function tryFocus() {
             if (!initialFocusSet && processFinished) {
@@ -161,6 +237,20 @@ QtObject {
             view.forceActiveFocus();
         }
 
+        // React to search query changes
+        Connections {
+            target: root
+            function onSearchQueryChanged() {
+                pickerWindow.rebuildFilter();
+                // Reset selection on filter change
+                if (pickerWindow.isImageTab && view.count > 0)
+                    view.currentIndex = 0;
+            }
+            function onTagsDbChanged() {
+                pickerWindow.rebuildFilter();
+            }
+        }
+
         anchors {
             top: true
             bottom: true
@@ -170,16 +260,19 @@ QtObject {
 
         Shortcut {
             sequence: "Left"
+            enabled: !pickerWindow.searchFocused
             onActivated: pickerWindow.isImageTab ? view.decrementCurrentIndex() : animatedView.decrementCurrentIndex()
         }
 
         Shortcut {
             sequence: "Right"
+            enabled: !pickerWindow.searchFocused
             onActivated: pickerWindow.isImageTab ? view.incrementCurrentIndex() : animatedView.incrementCurrentIndex()
         }
 
         Shortcut {
             sequence: "Return"
+            enabled: !pickerWindow.searchFocused
             onActivated: {
                 if (pickerWindow.isImageTab && view.currentItem)
                     view.currentItem.pickWallpaper();
@@ -190,7 +283,26 @@ QtObject {
 
         Shortcut {
             sequence: "Escape"
-            onActivated: root.closed()
+            onActivated: {
+                if (pickerWindow.searchFocused) {
+                    searchField.focus = false;
+                    pickerWindow.searchFocused = false;
+                    view.forceActiveFocus();
+                } else if (root.searchQuery !== "") {
+                    root.searchQuery = "";
+                    searchField.text = "";
+                } else {
+                    root.closed();
+                }
+            }
+        }
+
+        Shortcut {
+            sequence: "Ctrl+F"
+            onActivated: {
+                searchField.forceActiveFocus();
+                searchField.selectAll();
+            }
         }
 
         // -------------------------------------------------------------------------
@@ -210,7 +322,7 @@ QtObject {
         Item {
             id: cardContainer
             width: Math.min(parent.width * 0.85, 1600)
-            height: pickerWindow.itemHeight + 80
+            height: pickerWindow.itemHeight + 160
             anchors.centerIn: parent
 
             // Block clicks from passing through the card to the dismiss area
@@ -222,7 +334,137 @@ QtObject {
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 0
-            spacing: 0
+            spacing: 8
+
+            // ── Search Bar ──────────────────────────────────────────────
+            Rectangle {
+                id: searchBar
+                Layout.alignment: Qt.AlignHCenter
+                Layout.preferredWidth: Math.min(parent.width * 0.5, 550)
+                Layout.preferredHeight: 44
+                radius: 22
+                color: pickerWindow.searchFocused ? "#35FFFFFF" : "#20FFFFFF"
+                border.color: pickerWindow.searchFocused ? pickerWindow.accentGold : "#30FFFFFF"
+                border.width: 1.5
+
+                Behavior on color { ColorAnimation { duration: 200 } }
+                Behavior on border.color { ColorAnimation { duration: 200 } }
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 16
+                    anchors.rightMargin: 12
+                    spacing: 8
+
+                    // Search icon
+                    Text {
+                        text: "⌕"
+                        color: pickerWindow.searchFocused ? pickerWindow.accentGold : "#80FFFFFF"
+                        font.pixelSize: 18
+                        Behavior on color { ColorAnimation { duration: 200 } }
+                    }
+
+                    TextInput {
+                        id: searchField
+                        Layout.fillWidth: true
+                        color: "white"
+                        font.pixelSize: 14
+                        font.family: "Inter, Segoe UI, sans-serif"
+                        clip: true
+                        selectByMouse: true
+                        selectedTextColor: "black"
+                        selectionColor: pickerWindow.accentGold
+
+                        onTextChanged: {
+                            root.searchQuery = text;
+                        }
+                        onActiveFocusChanged: {
+                            pickerWindow.searchFocused = activeFocus;
+                        }
+
+                        // Placeholder
+                        Text {
+                            anchors.fill: parent
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "Buscar por tags...  (Ctrl+F)"
+                            color: "#50FFFFFF"
+                            font: parent.font
+                            visible: !parent.text && !parent.activeFocus
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
+
+                    // Clear button
+                    Rectangle {
+                        width: 24
+                        height: 24
+                        radius: 12
+                        color: clearMa.containsMouse ? "#40FFFFFF" : "transparent"
+                        visible: searchField.text.length > 0
+                        opacity: visible ? 1 : 0
+
+                        Behavior on opacity { NumberAnimation { duration: 150 } }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "✕"
+                            color: "#AAFFFFFF"
+                            font.pixelSize: 12
+                        }
+
+                        MouseArea {
+                            id: clearMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: {
+                                searchField.text = "";
+                                root.searchQuery = "";
+                                view.forceActiveFocus();
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Tagging Indicator ───────────────────────────────────────
+            RowLayout {
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 8
+                visible: root.isTagging
+
+                Rectangle {
+                    width: 10
+                    height: 10
+                    radius: 5
+                    color: pickerWindow.accentGold
+                    
+                    SequentialAnimation on opacity {
+                        loops: Animation.Infinite
+                        running: root.isTagging
+                        NumberAnimation { to: 0.3; duration: 800; easing.type: Easing.InOutQuad }
+                        NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutQuad }
+                    }
+                }
+                Text {
+                    text: "Generando tags con IA..."
+                    color: pickerWindow.accentGold
+                    font.pixelSize: 12
+                    font.bold: true
+                }
+            }
+
+
+            // ── Search Results Count ────────────────────────────────────
+            Text {
+                Layout.alignment: Qt.AlignHCenter
+                text: root.searchQuery !== "" ? pickerWindow.filteredIndices.length + " resultados" : ""
+                color: "#60FFFFFF"
+                font.pixelSize: 11
+                visible: root.searchQuery !== ""
+                Layout.preferredHeight: visible ? implicitHeight : 0
+
+                Behavior on Layout.preferredHeight { NumberAnimation { duration: 150 } }
+            }
 
             Item {
                 Layout.fillWidth: true
@@ -240,27 +482,53 @@ QtObject {
                     highlightRangeMode: ListView.StrictlyEnforceRange
                     preferredHighlightBegin: (width / 2) - (pickerWindow.itemWidthExpanded / 2)
                     preferredHighlightEnd: (width / 2) + (pickerWindow.itemWidthExpanded / 2)
-                    highlightMoveDuration: pickerWindow.initialFocusSet ? 350 : 0
+                    highlightMoveDuration: pickerWindow.initialFocusSet ? 450 : 0
                     focus: pickerWindow.isImageTab
                     onCountChanged: pickerWindow.tryFocus()
 
                     header: Item { width: (view.width - pickerWindow.itemWidthExpanded) / 2; height: 1 }
                     footer: Item { width: (view.width - pickerWindow.itemWidthExpanded) / 2; height: 1 }
 
-                    model: FolderListModel {
+                    // Use filtered model when searching, full model otherwise
+                    model: root.searchQuery !== "" ? filteredModel : folderModel
+
+                    FolderListModel {
                         id: folderModel
 
                         folder: pickerWindow.thumbDir
                         nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif"]
                         showDirs: false
                         sortField: FolderListModel.Name
-                        onStatusChanged: pickerWindow.tryFocus()
+                        onStatusChanged: {
+                            pickerWindow.tryFocus();
+                            pickerWindow.rebuildFilter();
+                        }
+                        onCountChanged: pickerWindow.rebuildFilter()
+                    }
+
+                    ListModel {
+                        id: filteredModel
+                    }
+
+                    // Rebuild filtered model from filteredIndices
+                    Connections {
+                        target: pickerWindow
+                        function onFilteredIndicesChanged() {
+                            filteredModel.clear();
+                            for (let idx of pickerWindow.filteredIndices) {
+                                filteredModel.append({
+                                    fileName: folderModel.get(idx, "fileName"),
+                                    fileUrl: folderModel.get(idx, "fileUrl")
+                                });
+                            }
+                        }
                     }
 
                     delegate: Item {
                         id: delegateRoot
 
                         readonly property bool isCurrent: ListView.isCurrentItem
+                        readonly property var currentTags: pickerWindow.getTagsForFile(fileName)
 
                         // Edge fade opacity: items near left/right edges fade out
                         property real viewX: x - view.contentX
@@ -291,6 +559,10 @@ QtObject {
                         height: view.height
                         z: isCurrent ? 10 : 1
 
+                        Behavior on width {
+                            NumberAnimation { duration: 450; easing.type: Easing.OutExpo }
+                        }
+
                         MouseArea {
                             anchors.fill: parent
                             onClicked: {
@@ -304,6 +576,10 @@ QtObject {
                             width: parent.width
                             height: pickerWindow.itemHeight
                             opacity: delegateRoot.isCurrent ? 1 : 0.55
+
+                            Behavior on opacity {
+                                NumberAnimation { duration: 450; easing.type: Easing.OutQuad }
+                            }
 
                             // Gold border for selected, subtle border for others
                             Rectangle {
@@ -387,16 +663,82 @@ QtObject {
 
                             }
 
+                            // ── Tags overlay (shown on selected item) ──
+                            Rectangle {
+                                anchors.bottom: parent.bottom
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                height: tagsFlow.implicitHeight + 16
+                                color: "#CC000000"
+                                radius: 10
+                                visible: delegateRoot.isCurrent && delegateRoot.currentTags.length > 0
+                                opacity: visible ? 1 : 0
+
+                                Behavior on opacity { NumberAnimation { duration: 300 } }
+
+                                Flow {
+                                    id: tagsFlow
+                                    anchors.fill: parent
+                                    anchors.margins: 8
+                                    spacing: 6
+
+                                    Repeater {
+                                        model: delegateRoot.currentTags
+
+                                        Rectangle {
+                                            width: tagLabel.implicitWidth + 14
+                                            height: 22
+                                            radius: 11
+                                            color: {
+                                                // Highlight tags that match the search
+                                                let q = root.searchQuery.trim().toLowerCase();
+                                                if (q !== "" && modelData.indexOf(q) !== -1)
+                                                    return pickerWindow.accentGold;
+                                                return "#30FFFFFF";
+                                            }
+
+                                            Behavior on color { ColorAnimation { duration: 200 } }
+
+                                            Text {
+                                                id: tagLabel
+                                                anchors.centerIn: parent
+                                                text: modelData
+                                                color: {
+                                                    let q = root.searchQuery.trim().toLowerCase();
+                                                    if (q !== "" && modelData.indexOf(q) !== -1)
+                                                        return "#111";
+                                                    return "#CCFFFFFF";
+                                                }
+                                                font.pixelSize: 10
+                                                font.bold: true
+                                            }
+
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    searchField.text = modelData;
+                                                    root.searchQuery = modelData;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
                             // File index badge (bottom-right)
                             Rectangle {
                                 anchors.bottom: parent.bottom
                                 anchors.right: parent.right
                                 anchors.margins: delegateRoot.isCurrent ? 14 : 6
+                                anchors.bottomMargin: delegateRoot.isCurrent && delegateRoot.currentTags.length > 0 ? (tagsFlow.implicitHeight + 24) : (delegateRoot.isCurrent ? 14 : 6)
                                 width: 28
                                 height: 28
                                 radius: 6
                                 color: "#80000000"
                                 visible: true
+
+                                Behavior on anchors.bottomMargin { NumberAnimation { duration: 300 } }
 
                                 Text {
                                     anchors.centerIn: parent
@@ -770,9 +1112,12 @@ QtObject {
             pickerWindow.targetWallName = "";
             pickerWindow.targetAnimatedId = "";
             pickerWindow.targetWallIndex = 0;
+            searchQuery = "";
             currentWallProcess.running = true;
             animatedModel.clear();
             weProcess.running = true;
+            // Load tags database
+            loadTagsProcess.running = true;
             // Trigger thumbnail synchronization
             syncThumbnailsProcess.running = true;
         }

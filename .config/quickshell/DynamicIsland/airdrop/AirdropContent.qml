@@ -15,6 +15,7 @@ Item {
     property string droppedFileExt: ""
     property string lsState: "idle"  // idle | scanning | ready | sending | sent | error
     property string statusMessage: ""
+    property real progressVal: 0.0
 
     // ── Propagate state to rootWidget for the AirdropBubble ────────────────────
     onLsStateChanged: {
@@ -80,14 +81,36 @@ Item {
             }
             return cmd
         }
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: (line) => {
+                var text = line.trim()
+                if (text.startsWith("PROGRESS:")) {
+                    var val = parseFloat(text.substring(9))
+                    if (!isNaN(val)) {
+                        airdropContent.progressVal = val / 100.0
+                    }
+                } else if (text === "REJECTED") {
+                    airdropContent.lsState = "error"
+                    airdropContent.statusMessage = "Declined by receiver"
+                } else if (text === "CANCELLED") {
+                    airdropContent.lsState = "error"
+                    airdropContent.statusMessage = "Cancelled by receiver"
+                }
+            }
+        }
         onExited: (code) => {
+            if (airdropContent.lsState === "idle") return
+            
             if (code === 0) {
                 airdropContent.lsState = "sent"
                 airdropContent.statusMessage = "File sent!"
                 sentResetTimer.start()
             } else {
-                airdropContent.lsState = "error"
-                airdropContent.statusMessage = "Transfer failed"
+                if (airdropContent.lsState !== "error" || (airdropContent.statusMessage !== "Declined by receiver" && airdropContent.statusMessage !== "Cancelled by receiver")) {
+                    airdropContent.lsState = "error"
+                    airdropContent.statusMessage = "Transfer failed"
+                }
                 sentResetTimer.start()
             }
         }
@@ -141,6 +164,7 @@ Item {
         droppedFileName = ""
         droppedFileExt = ""
         statusMessage = ""
+        progressVal = 0.0
         deviceModel.clear()
         discoverProc.running = false
         sendProc.running = false
@@ -489,6 +513,24 @@ Item {
                     opacity: 0.5
                     elide: Text.ElideMiddle
                     width: Math.min(implicitWidth, airdropContent.width - 40)
+                }
+
+                // Progress Bar
+                Rectangle {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: 150
+                    height: 4
+                    radius: 2
+                    color: Qt.rgba(1, 1, 1, 0.1)
+                    clip: true
+
+                    Rectangle {
+                        height: parent.height
+                        width: parent.width * Math.max(0, Math.min(1, airdropContent.progressVal))
+                        radius: 2
+                        color: "#cba6f7"
+                        Behavior on width { NumberAnimation { duration: 100 } }
+                    }
                 }
             }
 

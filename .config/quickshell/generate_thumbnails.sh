@@ -29,6 +29,12 @@ echo "Cleaning up old thumbnails..."
 for thumb in "$CACHE_DIR"/*; do
     [ -f "$thumb" ] || continue
     thumb_name=$(basename "$thumb")
+
+    # Skip non-image files (tags database, lock files, etc.)
+    case "$thumb_name" in
+        *.jpg|*.jpeg|*.png|*.webp|*.gif) ;;
+        *) continue ;;
+    esac
     
     # Check if it's a video thumbnail (starts with 000_ and ends with .jpg)
     if [[ "$thumb_name" == 000_* ]]; then
@@ -54,3 +60,16 @@ for thumb in "$CACHE_DIR"/*; do
         fi
     fi
 done
+
+# --- Tag wallpapers with AI (runs in background) ---
+TAGGER_SCRIPT="$(dirname "$0")/Wallpaper/wallpaper_tagger.py"
+if [ -f "$TAGGER_SCRIPT" ] && command -v ollama &>/dev/null; then
+    # Don't launch if already running
+    if pgrep -f "wallpaper_tagger.py" &>/dev/null; then
+        echo "Wallpaper tagger already running, skipping."
+    elif curl -s --max-time 3 http://localhost:11434/api/tags &>/dev/null; then
+        echo "Starting wallpaper tagger in background..."
+        OLLAMA_MODELS=/mnt/hdd/ollama/models python3 "$TAGGER_SCRIPT" &>/dev/null &
+        disown
+    fi
+fi

@@ -66,7 +66,7 @@ Rectangle {
                 if (root.lsState === "error") return "󰅖"
                 if (root.lsState === "sending") return "󰕒"
                 if (root.lsState === "scanning") return "󰍉"
-                return "󱁞"
+                return "󰒊"
             }
             font.family: "Iosevka Nerd Font"
             font.pixelSize: 18

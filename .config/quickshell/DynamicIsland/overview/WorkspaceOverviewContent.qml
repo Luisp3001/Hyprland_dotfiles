@@ -184,66 +184,6 @@ Item {
                     opacity: 0.5
                 }
             }
-
-            // Refresh button
-            Rectangle {
-                Layout.preferredWidth: 28
-                Layout.preferredHeight: 28
-                Layout.alignment: Qt.AlignVCenter
-                radius: 14
-                color: refreshHover.containsMouse
-                    ? Qt.rgba(1, 1, 1, 0.1)
-                    : "transparent"
-                Behavior on color { ColorAnimation { duration: 120 } }
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "󰑐"
-                    font.family: "Iosevka Nerd Font"
-                    font.pixelSize: 14
-                    color: rootWidget.walColors.special.foreground
-                    opacity: refreshHover.containsMouse ? 0.9 : 0.6
-                    Behavior on opacity { NumberAnimation { duration: 120 } }
-                }
-
-                MouseArea {
-                    id: refreshHover
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    onClicked: overviewContent.reload()
-                }
-            }
-
-            // Close button
-            Rectangle {
-                Layout.preferredWidth: 28
-                Layout.preferredHeight: 28
-                Layout.alignment: Qt.AlignVCenter
-                radius: 14
-                color: overviewCloseHover.containsMouse
-                    ? Qt.rgba(1, 1, 1, 0.1)
-                    : "transparent"
-                Behavior on color { ColorAnimation { duration: 120 } }
-
-                Text {
-                    anchors.centerIn: parent
-                    text: ""
-                    font.family: "Iosevka Nerd Font"
-                    font.pixelSize: 14
-                    color: rootWidget.walColors.special.foreground
-                    opacity: 0.6
-                }
-
-                MouseArea {
-                    id: overviewCloseHover
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    onClicked: {
-                        if (rootWidget.overviewOpen)
-                            rootWidget.toggleOverview();
-                    }
-                }
-            }
         }
 
         // ── Divider ──────────────────────────────────────────────────
