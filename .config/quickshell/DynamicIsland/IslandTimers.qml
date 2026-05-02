@@ -24,6 +24,9 @@ Item {
     property alias overviewOpacity: overviewOpacityObj
     property alias overviewFadeInTimer: overviewFadeInTimerObj
     property alias overviewCloseTimer: overviewCloseTimerObj
+    property alias _screenRecOpacity: _screenRecOpacityObj
+    property alias screenRecFadeInTimer: screenRecFadeInTimerObj
+    property alias screenRecCloseTimer: screenRecCloseTimerObj
 
     QtObject {
         id: notifOpacityObj
@@ -91,6 +94,11 @@ Item {
                     rootWidget.airdropMinimized = true;
                 }
                 rootWidget.airdropOpen = false;
+            }
+            if (rootWidget.screenRecOpen) {
+                _screenRecOpacityObj.value = 0;
+                rootWidget.screenRecMinimized = true;
+                rootWidget.screenRecOpen = false;
             }
             if (rootWidget.detailExpanded) {
                 detailOpacityObj.value = 0;
@@ -225,6 +233,33 @@ Item {
         interval: 250
         onTriggered: {
             rootWidget.overviewOpen = false;
+            if (rootWidget.expanded) {
+                pill.compactPlayer.showNote.start();
+                pill.compactPlayer.showText.start();
+                pill.compactPlayer.showControls.start();
+            }
+        }
+    }
+
+    QtObject {
+        id: _screenRecOpacityObj
+        property real value: 0.0
+        Behavior on value {
+            NumberAnimation { duration: 250; easing.type: Easing.InOutQuad }
+        }
+    }
+
+    Timer {
+        id: screenRecFadeInTimerObj
+        interval: 200
+        onTriggered: _screenRecOpacityObj.value = 1.0
+    }
+
+    Timer {
+        id: screenRecCloseTimerObj
+        interval: 250
+        onTriggered: {
+            rootWidget.screenRecOpen = false;
             if (rootWidget.expanded) {
                 pill.compactPlayer.showNote.start();
                 pill.compactPlayer.showText.start();

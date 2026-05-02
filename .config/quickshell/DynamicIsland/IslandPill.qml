@@ -4,7 +4,8 @@ import "music"
 import "airdrop"
 import "applauncher"
 import "notifications"
-import "overview"
+import "overview"   
+import "screenrec"
 
 Rectangle {
     id: pill
@@ -16,6 +17,7 @@ Rectangle {
     property real expandedWidth: 850
     property real launcherWidth: 560
     property real airdropWidth: 420
+    property real screenRecWidth: 420
     property real overviewWidth: (overviewContentLoader.item ? overviewContentLoader.item.gridWidth : 700) + 46
     property real notifWidth: 430
     property real notifHeight: {
@@ -27,16 +29,17 @@ Rectangle {
     }
     property real launcherHeight: (launcherContentLoader.item ? launcherContentLoader.item.preferredHeight : 425) + 28
     property real airdropHeight: (airdropContentLoader.item ? airdropContentLoader.item.preferredHeight : 200) + 28
+    property real screenRecHeight: (screenRecContentLoader.item ? screenRecContentLoader.item.preferredHeight : 250) + 28
     property real overviewHeight: (overviewContentLoader.item ? overviewContentLoader.item.preferredHeight : 280) + 28
-    property real targetWidth: rootWidget.overviewOpen ? overviewWidth : (rootWidget.airdropOpen ? airdropWidth : (rootWidget.launcherOpen ? launcherWidth : (rootWidget.notificationVisible ? notifWidth : (rootWidget.detailExpanded ? expandedWidth : compactWidth))))
-    property real targetHeight: rootWidget.overviewOpen ? overviewHeight : (rootWidget.airdropOpen ? airdropHeight : (rootWidget.launcherOpen ? launcherHeight : (rootWidget.notificationVisible ? notifHeight : (rootWidget.detailExpanded ? 420 : 45))))
+    property real targetWidth: rootWidget.screenRecOpen ? screenRecWidth : (rootWidget.overviewOpen ? overviewWidth : (rootWidget.airdropOpen ? airdropWidth : (rootWidget.launcherOpen ? launcherWidth : (rootWidget.notificationVisible ? notifWidth : (rootWidget.detailExpanded ? expandedWidth : compactWidth)))))
+    property real targetHeight: rootWidget.screenRecOpen ? screenRecHeight : (rootWidget.overviewOpen ? overviewHeight : (rootWidget.airdropOpen ? airdropHeight : (rootWidget.launcherOpen ? launcherHeight : (rootWidget.notificationVisible ? notifHeight : (rootWidget.detailExpanded ? 420 : 45)))))
 
     antialiasing: true
     clip: true
     layer.enabled: true
     width: targetWidth
     height: targetHeight
-    radius: (rootWidget.detailExpanded || rootWidget.notificationVisible || rootWidget.launcherOpen || rootWidget.airdropOpen || rootWidget.overviewOpen) ? 22 : height / 2
+    radius: (rootWidget.detailExpanded || rootWidget.notificationVisible || rootWidget.launcherOpen || rootWidget.airdropOpen || rootWidget.overviewOpen || rootWidget.screenRecOpen) ? 22 : height / 2
     color: rootWidget.walColors.special.background
     border.color: rootWidget.expanded ? "#3d4150" : "transparent"
     border.width: 1
@@ -81,6 +84,7 @@ Rectangle {
             if (rootWidget.launcherOpen) return; // Don't toggle detail while launcher is open
             if (rootWidget.airdropOpen) return; // Don't toggle detail while airdrop is open
             if (rootWidget.overviewOpen) return; // Don't toggle detail while overview is open
+            if (rootWidget.screenRecOpen) return; // Don't toggle detail while screenRec is open
 
             if (rootWidget.notificationVisible) {
                 var invoked = false;
@@ -143,7 +147,7 @@ Rectangle {
         id: notifContent
 
         rootWidget: pill.rootWidget
-        visible: rootWidget.notifOpacity.value > 0 && !rootWidget.launcherOpen && !rootWidget.airdropOpen && !rootWidget.overviewOpen
+        visible: rootWidget.notifOpacity.value > 0 && !rootWidget.launcherOpen && !rootWidget.airdropOpen && !rootWidget.overviewOpen && !rootWidget.screenRecOpen
         opacity: rootWidget.notifOpacity.value
 
         anchors {
@@ -229,12 +233,33 @@ Rectangle {
         }
     }
 
+    // ── ScreenRec content ────────────────────────────────────────────
+    Loader {
+        id: screenRecContentLoader
+        active: rootWidget.screenRecOpen || rootWidget._screenRecOpacity.value > 0 || rootWidget.screenRecMinimized
+        visible: rootWidget._screenRecOpacity.value > 0
+        opacity: rootWidget._screenRecOpacity.value
+        sourceComponent: Component {
+            ScreenRecContent {
+                rootWidget: pill.rootWidget
+            }
+        }
+
+        anchors {
+            fill: parent
+            leftMargin: 18
+            rightMargin: 18
+            topMargin: 14
+            bottomMargin: 14
+        }
+    }
+
     // ── Global DropArea: expand island on external file drag ─────
     DropArea {
         id: pillDropArea
         anchors.fill: parent
         keys: ["text/uri-list", "text/plain"]
-        enabled: !rootWidget.airdropOpen && !rootWidget.launcherOpen && !rootWidget.overviewOpen
+        enabled: !rootWidget.airdropOpen && !rootWidget.launcherOpen && !rootWidget.overviewOpen && !rootWidget.screenRecOpen
 
         onEntered: (drag) => {
             // A file is being dragged over the island — expand to airdrop
@@ -255,9 +280,12 @@ Rectangle {
         } else if (rootWidget.overviewOpen) {
             rootWidget.toggleOverview();
             event.accepted = true;
+        } else if (rootWidget.screenRecOpen) {
+            rootWidget.toggleScreenRec();
+            event.accepted = true;
         }
     }
-    focus: rootWidget.launcherOpen || rootWidget.airdropOpen || rootWidget.overviewOpen
+    focus: rootWidget.launcherOpen || rootWidget.airdropOpen || rootWidget.overviewOpen || rootWidget.screenRecOpen
 
     Behavior on anchors.horizontalCenterOffset {
         NumberAnimation {
