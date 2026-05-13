@@ -1,6 +1,6 @@
 hl.layer_rule({ match = { namespace = "power-menu" }, animation = "fade" })
 hl.layer_rule({ match = { namespace = "notificationcenter" }, blur = false, ignore_alpha = 1, order = 1 })
-hl.layer_rule({ match = { namespace = "selection" }, blur = false, ignore_alpha = 1 })
+hl.layer_rule({ match = { namespace = "selection" }, blur = false, ignore_alpha = 1, animation="fade" })
 hl.layer_rule({ match = { namespace = "quickshell" }, blur = false, ignore_alpha = 1, animation = "fade" })
 hl.layer_rule({ match = { namespace = "wallpaper-picker" }, blur = false, ignore_alpha = 0.1, animation = "popin 80%" })
 hl.layer_rule({ match = { namespace = "rofi" }, blur = false, ignore_alpha = 0.1, animation = "popin 80%" })
@@ -9,6 +9,7 @@ hl.layer_rule({ match = { namespace = "launcher-dismiss" }, blur = false, ignore
 hl.layer_rule({ match = { namespace = "gtk-layer-shell" }, blur = false })
 hl.layer_rule({ match = { namespace = "gtk4-layer-shell" }, blur = false })
 hl.layer_rule({ match = { namespace = "overview-dismiss" }, blur = false })
+hl.layer_rule({ match = { namespace = "screenrec-osd" }, blur = false }) 
 
 hl.workspace_rule({ workspace = "w[tv1]", gaps_out = 0, gaps_in = 0 })
 hl.workspace_rule({ workspace = "f[1]",   gaps_out = 0, gaps_in = 0 })

@@ -1,3 +1,4 @@
+fastfetch
 (cat ~/.cache/wal/sequences)
 # enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
 # Initialization code that may require console input (password prompts, [y/n]
@@ -119,7 +120,6 @@ source ~/powerlevel10k/powerlevel10k.zsh-theme
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
-
 export PATH=$PATH:/home/lfpt3001/.spicetify
 export PATH="$HOME/.spicetify/spicetify:$PATH"
 export PATH="/home/lfpt3001/.cargo/bin:$PATH"
@@ -134,4 +134,3 @@ export PATH="$HOME/.npm-global/bin:$PATH"
 
 # OpenClaw Completion
 
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv zsh)"

@@ -7,7 +7,7 @@ local wallpaper = "qs ipc call shell toggleWallpaper"
 local screenshot = "qs ipc call shell launchScreenshot"
 local overview = "qs ipc call shell toggleOverview"
 local scripts = "~/.config/hypr/scripts_hypr/launcher.sh --script"
-local screenrec = "/home/luisp/.config/quickshell/DynamicIsland/screenrec/wl_screenrec_ctl.sh start -- --audio --audio-device alsa_output.usb-Corsair_Corsair_HS65_SURROUND-00.analog-stereo.monitor"
+local screenrec = "/home/luisp/.config/quickshell/DynamicIsland/screenrec/wl_screenrec_ctl.sh open-selector -- --audio --audio-device alsa_output.usb-Corsair_Corsair_HS65_SURROUND-00.analog-stereo.monitor"
 
 hl.config({
     binds = {

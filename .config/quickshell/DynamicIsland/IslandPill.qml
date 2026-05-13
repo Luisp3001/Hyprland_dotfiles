@@ -53,9 +53,16 @@ Rectangle {
 
     anchors {
         top: parent.top
-        topMargin: rootWidget.verticalPadding
+        topMargin: rootWidget.launcherOpen ? (parent.height * 0.28) : rootWidget.verticalPadding
         horizontalCenter: parent.horizontalCenter
         horizontalCenterOffset: 0
+    }
+
+    Behavior on anchors.topMargin {
+        NumberAnimation {
+            duration: 500
+            easing.type: Easing.OutQuint
+        }
     }
 
     // Click to toggle expanded view / dismiss notification
@@ -110,6 +117,7 @@ Rectangle {
         id: row
 
         rootWidget: pill.rootWidget
+        visible: !rootWidget.launcherOpen || rootWidget.launcherOpacity.value < 0.5
 
         anchors {
             top: parent.top

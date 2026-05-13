@@ -3,8 +3,9 @@
 # State: $XDG_RUNTIME_DIR/quickshell-wl-screenrec.env
 #
 # Usage:
-#   wl_screenrec_ctl.sh start -- [args...]    # passes args to wl-screenrec
-#   wl_screenrec_ctl.sh status                # one-line JSON on stdout
+#   wl_screenrec_ctl.sh open-selector [-- args...]  # open mode-selector in Dynamic Island
+#   wl_screenrec_ctl.sh start -- [args...]           # passes args to wl-screenrec directly
+#   wl_screenrec_ctl.sh status                       # one-line JSON on stdout
 #   wl_screenrec_ctl.sh pause|resume|stop
 #
 # Pause uses SIGSTOP/SIGCONT on the wl-screenrec process (best-effort; audio sync may drift).
@@ -20,6 +21,24 @@ fi
 unset _state_base
 mkdir -p "$(dirname "$QS_SCREENREC_STATE")"
 
+# Flag file for open-selector IPC: contains a JSON array of extra wl-screenrec args
+QS_SCREENREC_OPEN_FLAG="${QS_SCREENREC_STATE%.env}.open_flag"
+
+# Convert positional args into a JSON string array (no jq dependency)
+_args_to_json() {
+  local json="["
+  local first=true
+  for arg in "$@"; do
+    $first || json+=","
+    first=false
+    arg="${arg//\\/\\\\}"  # escape backslashes
+    arg="${arg//\"/\\\"}"  # escape double-quotes
+    json+="\"${arg}\""
+  done
+  json+="]"
+  echo "$json"
+}
+
 die() {
   echo "$*" >&2
   exit 1
@@ -31,8 +50,17 @@ get_now() {
 }
 
 cmd_status() {
+  # Check for open-selector signal (only honoured when idle)
+  local pending_open="false"
+  local pending_args="[]"
+  if [[ -f "$QS_SCREENREC_OPEN_FLAG" ]]; then
+    pending_open="true"
+    pending_args=$(< "$QS_SCREENREC_OPEN_FLAG")
+    rm -f "$QS_SCREENREC_OPEN_FLAG"
+  fi
+
   if [[ ! -f "$QS_SCREENREC_STATE" ]]; then
-    echo '{"state": "idle"}'
+    echo "{\"state\": \"idle\", \"pending_open\": ${pending_open}, \"pending_args\": ${pending_args}}"
     return 0
   fi
 
@@ -42,12 +70,12 @@ cmd_status() {
 
   if [[ -z "${PID:-}" ]] || ! kill -0 "$PID" 2>/dev/null; then
     rm -f "$QS_SCREENREC_STATE"
-    echo '{"state": "idle"}'
+    echo "{\"state\": \"idle\", \"pending_open\": ${pending_open}, \"pending_args\": ${pending_args}}"
     return 0
   fi
 
   if [[ "${STATE:-}" == "paused" ]]; then
-    echo "{\"state\": \"paused\", \"pid\": $PID, \"elapsed_sec\": ${FROZEN_ELAPSED_SEC:-0}}"
+    echo "{\"state\": \"paused\", \"pid\": $PID, \"elapsed_sec\": ${FROZEN_ELAPSED_SEC:-0}, \"pending_open\": ${pending_open}, \"pending_args\": ${pending_args}}"
   elif [[ "${STATE:-}" == "recording" ]]; then
     local now
     now=$(get_now)
@@ -55,9 +83,19 @@ cmd_status() {
     local accum=${PAUSED_ACCUM:-0}
     local elapsed=$(( now - started - accum ))
     (( elapsed < 0 )) && elapsed=0
-    echo "{\"state\": \"recording\", \"pid\": $PID, \"elapsed_sec\": $elapsed}"
+    echo "{\"state\": \"recording\", \"pid\": $PID, \"elapsed_sec\": $elapsed, \"pending_open\": ${pending_open}, \"pending_args\": ${pending_args}}"
   else
-    echo '{"state": "idle"}'
+    echo "{\"state\": \"idle\", \"pending_open\": ${pending_open}, \"pending_args\": ${pending_args}}"
+  fi
+}
+
+cmd_open_selector() {
+  shift  # remove "open-selector"
+  if [[ "${1:-}" == "--" ]]; then
+    shift
+    _args_to_json "$@" > "$QS_SCREENREC_OPEN_FLAG"
+  else
+    echo "[]" > "$QS_SCREENREC_OPEN_FLAG"
   fi
 }
 
@@ -225,12 +263,13 @@ cmd_stop() {
 }
 
 case "${1:-}" in
-  status) cmd_status ;;
-  start) cmd_start "$@" ;;
-  pause) cmd_pause ;;
-  resume) cmd_resume ;;
-  stop) cmd_stop ;;
+  status)        cmd_status ;;
+  open-selector) cmd_open_selector "$@" ;;
+  start)         cmd_start "$@" ;;
+  pause)         cmd_pause ;;
+  resume)        cmd_resume ;;
+  stop)          cmd_stop ;;
   *)
-    die "usage: wl_screenrec_ctl.sh {status|start -- ...|pause|resume|stop}"
+    die "usage: wl_screenrec_ctl.sh {status|open-selector [-- ...]|start -- ...|pause|resume|stop}"
     ;;
 esac

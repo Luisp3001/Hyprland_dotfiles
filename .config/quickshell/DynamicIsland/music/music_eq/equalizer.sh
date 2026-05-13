@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 STATE_FILE="/tmp/eq_state.json"
-PRESET_DIR="$HOME/.config/easyeffects/output"
+PRESET_DIR="$HOME/.local/share/easyeffects/output"
 PRESET_NAME="live_eq"
 PRESET_FILE="$PRESET_DIR/${PRESET_NAME}.json"
 

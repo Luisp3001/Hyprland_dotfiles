@@ -12,7 +12,6 @@ Rectangle {
     signal clicked()
 
     antialiasing: true
-    clip: true
     layer.enabled: true
     width: 45
     height: 45
