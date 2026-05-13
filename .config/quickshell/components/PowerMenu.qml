@@ -230,7 +230,7 @@ Item {
             baseColor: root.logoutColor
             onActivated: {
                 root.close()
-                Quickshell.execDetached(["bash", "-c", "sleep 0.35 && hyprctl dispatch exit"])
+                Quickshell.execDetached(["bash", "-c", "sleep 0.35 && hyprctl dispatch 'hl.dsp.exit()'"])
             }
         }
 

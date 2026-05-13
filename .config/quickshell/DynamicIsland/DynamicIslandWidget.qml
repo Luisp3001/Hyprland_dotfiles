@@ -39,16 +39,52 @@ Item {
     property var airdropOpacity: _airdropOpacity
     // ── Workspace Overview state ─────────────────────────────────────────
     property bool overviewOpen: false
+    // ── Fullscreen state (passed from shell.qml) ────────────────────────
+    property int activeWindowFullscreen: 0
+    // ── Screen Recording OSD routing signals ────────────────────────────
+    signal showScreenRecOsd(bool selector)
+    signal dismissScreenRecOsd()
+    property bool screenRecOsdShowing: false    // bound from shell.qml
     // ── Screen Recording state ──────────────────────────────────────────
     property string screenRecState: "idle"
     property int screenRecElapsed: 0
     property bool screenRecOpen: false
     property bool screenRecMinimized: true
+    property var _pendingRecArgs: []  // extra args saved by open-selector (e.g. --audio --audio-device ...)
+    property bool _screenRecSelectorOpen: false  // true while mode-selector panel is showing (idle state)
 
     readonly property string screenRecScript: Quickshell.env("HOME") + "/.config/quickshell/DynamicIsland/screenrec/wl_screenrec_ctl.sh"
 
     function screenRecRunCtl(action) {
         Quickshell.execDetached(["bash", screenRecScript, action]);
+    }
+
+    // Start fullscreen recording – close panel, minimize to bubble
+    function screenRecStartFullscreen() {
+        root._screenRecSelectorOpen = false;
+        root._screenRecOpacity.value = 0.0;
+        screenRecCloseTimer.start();
+        root.screenRecMinimized = true;
+        var cmd = ["bash", screenRecScript, "start", "--"].concat(root._pendingRecArgs);
+        Quickshell.execDetached(cmd);
+    }
+
+    // Close panel, invoke slurp for region selection, then start recording
+    function screenRecStartRegion() {
+        root._screenRecSelectorOpen = false;
+        root._screenRecOpacity.value = 0.0;
+        screenRecCloseTimer.start();
+        root.screenRecMinimized = true;
+        // Build a bash script that: sleeps briefly for panel to close,
+        // runs slurp (needs full Wayland input grab), then starts recording.
+        // execDetached so slurp runs independently of Quickshell's event loop.
+        var extraArgs = root._pendingRecArgs.map(function(a) {
+            return "'" + a.replace(/'/g, "'\\''") + "'";
+        }).join(" ");
+        var script = "sleep 0.4; geo=$(slurp) && exec bash '"
+            + root.screenRecScript + "' start -- "
+            + extraArgs + " --geometry \"$geo\"";
+        Quickshell.execDetached(["bash", "-c", script]);
     }
 
     Lib.CommandPoll {
@@ -64,8 +100,40 @@ Item {
                     root.screenRecElapsed = Math.floor(o.elapsed_sec);
                 else
                     root.screenRecElapsed = parseInt(o.elapsed_sec, 10) || 0;
-                
-                if (root.screenRecState === "idle" && root.screenRecOpen) {
+
+                // open-selector IPC: script wrote a flag file; status picked it up
+                if (o.pending_open === true && !root.screenRecOpen && root.screenRecState === "idle") {
+                    root._pendingRecArgs = Array.isArray(o.pending_args) ? o.pending_args : [];
+                    // Route to OSD when in fullscreen (state 2)
+                    if (root.activeWindowFullscreen === 2) {
+                        // Toggle: if OSD selector is already showing, close it
+                        if (root.screenRecOsdShowing) {
+                            root.dismissScreenRecOsd();
+                        } else {
+                            root.showScreenRecOsd(true);
+                        }
+                    } else {
+                        root._screenRecSelectorOpen = true;
+                        root.toggleScreenRec();
+                    }
+                }
+
+                // Keybind pressed while recording: show OSD or toggle DI panel
+                if (o.pending_open === true && (root.screenRecState === "recording" || root.screenRecState === "paused")) {
+                    if (root.activeWindowFullscreen === 2) {
+                        root.showScreenRecOsd(false);  // false = recording controls
+                    } else {
+                        root.toggleScreenRec();
+                    }
+                }
+
+                // Clear selector flag once recording actually starts
+                if (root.screenRecState !== "idle") {
+                    root._screenRecSelectorOpen = false;
+                }
+
+                // Auto-close panel if recording stopped (but NOT while selector is open)
+                if (root.screenRecState === "idle" && root.screenRecOpen && !root._screenRecSelectorOpen) {
                     root.toggleScreenRec();
                 }
             } catch (e) {
@@ -300,6 +368,10 @@ Item {
     onLauncherOpenChanged: {
         if (launcherOpen) {
             launcherFadeInTimer.start();
+            // Hide compact player while Spotlight is open
+            row.hideControls.start();
+            row.hideText.start();
+            row.hideNote.start();
             // If Loader item already exists (re-open), reload now.
             // First open is handled by Loader.onLoaded.
             Qt.callLater(function() {
@@ -311,7 +383,17 @@ Item {
 
     // ── Screen Recorder toggle ──────────────────────────────────────────
     function toggleScreenRec() {
+        // When in fullscreen and recording, route to OSD instead of Dynamic Island
+        if (root.activeWindowFullscreen === 2 && !root.screenRecOpen) {
+            var isRecording = (root.screenRecState === "recording" || root.screenRecState === "paused");
+            if (isRecording) {
+                root.showScreenRecOsd(false);  // false = recording controls, not selector
+                return;
+            }
+        }
+
         if (root.screenRecOpen) {
+            root._screenRecSelectorOpen = false;
             root._screenRecOpacity.value = 0.0;
             screenRecCloseTimer.start();
             root.screenRecMinimized = true;
@@ -409,8 +491,8 @@ Item {
     // Eliminates the jitter from Hyprland re-laying-out the window mid-animation.
     implicitHeight: 700
 
-    // Stack screen-rec bubble below AirdropBubble when both would sit on the left
-    readonly property bool screenRecStackUnderAirdrop: {
+    // Shift screen-rec bubble left of AirdropBubble when both would sit on the left
+    readonly property bool airdropBubbleActive: {
         if (root.notificationVisible || root.notifCenterVisible)
             return false;
 
@@ -444,7 +526,7 @@ Item {
     NotificationBubble {
         id: notifBubble
 
-        z: root.notifCenterVisible ? 100 : 0
+        z: root.notifCenterVisible ? 100 : -1
         server: root.server
         historyModel: root.historyModel
         walColors: root.walColors
@@ -488,6 +570,8 @@ Item {
     // ── Airdrop bubble (left side, background transfer status) ─────
     AirdropBubble {
         id: airdropBubble
+
+        z: -1
 
         walColors: root.walColors
         lsState: root.airdropLsState
@@ -534,19 +618,19 @@ Item {
     ScreenRecBubble {
         id: screenRecBubble
 
-        z: 2
+        z: -1
         walColors: root.walColors
         rootWidget: root
 
         anchors {
-            top: root.screenRecStackUnderAirdrop ? airdropBubble.bottom : pill.top
-            topMargin: root.screenRecStackUnderAirdrop ? 8 : 0
+            top: pill.top
             horizontalCenter: parent.horizontalCenter
             horizontalCenterOffset: {
                 var hasActivity = (root.screenRecState === "recording" || root.screenRecState === "paused");
                 var showBubble = (root.screenRecMinimized && hasActivity && !root.screenRecOpen);
-                if (showBubble)
-                    return -212.5;
+                if (showBubble) {
+                    return root.airdropBubbleActive ? -265.5 : -212.5;
+                }
 
                 return -150;
             }
@@ -561,13 +645,6 @@ Item {
         visible: state === "visible" || opacity > 0
         onClicked: {
             root.toggleScreenRec();
-        }
-
-        Behavior on anchors.topMargin {
-            NumberAnimation {
-                duration: 400
-                easing.type: Easing.OutQuint
-            }
         }
 
         Behavior on anchors.horizontalCenterOffset {
