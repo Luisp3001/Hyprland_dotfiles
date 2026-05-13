@@ -26,17 +26,17 @@ RowLayout {
     QtObject {
         id: noteOpacity
         property real value: 0.0
-        Behavior on value { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+        Behavior on value { NumberAnimation { duration: 100; easing.type: Easing.InOutQuad } }
     }
     QtObject {
         id: textOpacity
         property real value: 0.0
-        Behavior on value { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+        Behavior on value { NumberAnimation { duration: 100; easing.type: Easing.InOutQuad } }
     }
     QtObject {
         id: controlsOpacity
         property real value: 0.0
-        Behavior on value { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+        Behavior on value { NumberAnimation { duration: 100; easing.type: Easing.InOutQuad } }
     }
 
     Timer { id: showNote;     interval: 200; onTriggered: noteOpacity.value = 1.0 }
@@ -44,8 +44,8 @@ RowLayout {
     Timer { id: showControls; interval: 500; onTriggered: controlsOpacity.value = 1.0 }
 
     Timer { id: hideControls; interval: 0;   onTriggered: controlsOpacity.value = 0.0 }
-    Timer { id: hideText;     interval: 80;  onTriggered: textOpacity.value = 0.0 }
-    Timer { id: hideNote;     interval: 160; onTriggered: noteOpacity.value = 0.0 }
+    Timer { id: hideText;     interval: 20;  onTriggered: textOpacity.value = 0.0 }
+    Timer { id: hideNote;     interval: 40; onTriggered: noteOpacity.value = 0.0 }
 
     Connections {
         target: rootWidget
@@ -90,6 +90,13 @@ RowLayout {
         }
 
         function onOverviewOpenChanged() {
+            isTransitioning = true;
+            transitionTimer.restart();
+            scrollAnim.stop();
+            trackLabel.x = 0;
+        }
+         
+        function onScreenRecOpenChanged() {
             isTransitioning = true;
             transitionTimer.restart();
             scrollAnim.stop();

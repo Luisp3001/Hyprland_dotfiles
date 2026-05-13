@@ -12,6 +12,7 @@ import "HyprQuickFrame"
 import "notificationcenter"
 import "topbar"
 import "components"
+import "DynamicIsland/screenrec"
 
 ShellRoot {
     id: shell
@@ -22,6 +23,31 @@ ShellRoot {
     property bool notifCenterVisible:  false
     property bool powerMenuVisible:    false
     property bool dndEnabled:          false
+
+    // ── Fullscreen State Poller ─────────────────────────────────────────
+    // 0 = normal, 1 = maximized, 2 = fullscreen
+    property int activeWindowFullscreen: 0
+    // ── Screen Recording OSD state ────────────────────────────────────
+    property bool screenRecOsdVisible: false
+    property bool screenRecOsdSelector: false   // true = showing mode picker
+    
+    CommandPoll {
+        command: ["hyprctl", "activewindow", "-j"]
+        interval: 500
+        parse: function(out) { return String(out ?? "").trim(); }
+        onUpdated: {
+            try {
+                if (text && text !== "{}" && text !== "") {
+                    var o = JSON.parse(text);
+                    shell.activeWindowFullscreen = (typeof o.fullscreen === "number") ? o.fullscreen : 0;
+                } else {
+                    shell.activeWindowFullscreen = 0;
+                }
+            } catch (e) {
+                shell.activeWindowFullscreen = 0;
+            }
+        }
+    }
 
     // ── Volume State ───────────────────────────────────────────────────
     property real currentVolume: 0.5
@@ -286,10 +312,11 @@ ShellRoot {
     }
 
     // 4. Center Music & Notification Window
+    // top+bottom: spans full screen height so the pill can animate
+    // to center for Spotlight-style launcher. Mask handles click-through.
     PanelWindow {
-        anchors { top: true } // Auto-centered by Hyprland/wlroots
-        implicitWidth: mWidget.implicitWidth 
-        implicitHeight: mWidget.implicitHeight
+        anchors { top: true; bottom: true }
+        implicitWidth: mWidget.implicitWidth
         color: "transparent"
         visible: true
         exclusionMode: ExclusionMode.Ignore
@@ -307,8 +334,15 @@ ShellRoot {
             historyModel: shell.notifHistory
             notifCenterVisible: shell.notifCenterVisible
             dndEnabled: shell.dndEnabled
+            activeWindowFullscreen: shell.activeWindowFullscreen
+            screenRecOsdShowing: shell.screenRecOsdVisible
             onToggleNotifCenter: () => shell.notifCenterVisible = !shell.notifCenterVisible
             onDndEnabledChanged: shell.dndEnabled = mWidget.dndEnabled
+            onShowScreenRecOsd: function(selector) {
+                shell.screenRecOsdSelector = selector;
+                shell.screenRecOsdVisible = true;
+            }
+            onDismissScreenRecOsd: shell.screenRecOsdVisible = false
         }
     }
 
@@ -425,4 +459,54 @@ ShellRoot {
             rootWidget: shell
         }
     }
+
+    // ── Screen Recording OSD (Overlay Layer – above fullscreen apps) ────
+    PanelWindow {
+        anchors { bottom: true }
+        implicitWidth: 500
+        implicitHeight: 80
+        margins.bottom: 60
+        color: "transparent"
+        visible: shell.screenRecOsdVisible || screenRecOsd.opacity > 0
+        exclusionMode: ExclusionMode.Ignore
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.namespace: "screenrec-osd"
+
+        ScreenRecOSD {
+            id: screenRecOsd
+            anchors.centerIn: parent
+            walColors: shell.walColors
+            screenRecState: mWidget.screenRecState
+            screenRecElapsed: mWidget.screenRecElapsed
+            selectorMode: shell.screenRecOsdSelector
+            osdVisible: shell.screenRecOsdVisible
+
+            onSelectFullscreen: {
+                shell.screenRecOsdSelector = false;
+                shell.screenRecOsdVisible = false;
+                mWidget.screenRecStartFullscreen();
+            }
+            onSelectRegion: {
+                shell.screenRecOsdSelector = false;
+                shell.screenRecOsdVisible = false;
+                mWidget.screenRecStartRegion();
+            }
+            onRequestPause: mWidget.screenRecRunCtl("pause")
+            onRequestResume: mWidget.screenRecRunCtl("resume")
+            onRequestStop: {
+                mWidget.screenRecRunCtl("stop");
+                shell.screenRecOsdVisible = false;
+            }
+            onDismissed: shell.screenRecOsdVisible = false
+        }
+    }
+
+    // Auto-hide OSD (6s for selector, 4s for recording controls)
+    Timer {
+        id: osdAutoHide
+        interval: shell.screenRecOsdSelector ? 6000 : 4000
+        running: shell.screenRecOsdVisible
+        onTriggered: shell.screenRecOsdVisible = false
+    }
+
 }
