@@ -12,6 +12,15 @@ import "../theme.js" as Theme
 Rectangle {
     id: root
 
+    // Power mode: auto-detect from battery status
+    property bool onACPower: true
+    property var _batStatus: FileView {
+        path: "/sys/class/power_supply/BAT0/status"
+        watchChanges: true
+        onTextChanged: root.onACPower = (text().trim() !== "Discharging")
+    }
+    Component.onCompleted: root.onACPower = (_batStatus.text().trim() !== "Discharging")
+
     // =========================
     // Sizing / visibility
     // =========================
@@ -494,7 +503,7 @@ Rectangle {
             anchors.fill: bgArt
             source: bgArt
             radius: 80
-            visible: root.visible && root.effectiveArtUrl !== ""
+            visible: root.onACPower && root.visible && root.effectiveArtUrl !== ""
             cached: true
         }
 

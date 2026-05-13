@@ -1,10 +1,21 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
+import Quickshell
+import Quickshell.Io
 
 Item {
     id: expandedPlayer
     property var rootWidget
+
+    // Power mode: auto-detect from battery status
+    property bool onACPower: true
+    property var _batStatus: FileView {
+        path: "/sys/class/power_supply/BAT0/status"
+        watchChanges: true
+        onTextChanged: expandedPlayer.onACPower = (text().trim() !== "Discharging")
+    }
+    Component.onCompleted: expandedPlayer.onACPower = (_batStatus.text().trim() !== "Discharging")
 
     // Background animation: Flowing Orbits
     property real globalOrbitAngle: 0
@@ -12,7 +23,7 @@ Item {
         from: 0; to: Math.PI * 2
         duration: 90000
         loops: Animation.Infinite
-        running: true
+        running: expandedPlayer.onACPower
     }
 
     Item {
@@ -134,7 +145,7 @@ Item {
                 NumberAnimation on rotation {
                     from: 0; to: 360; duration: 8000
                     loops: Animation.Infinite
-                    running: rootWidget.isPlaying
+                    running: rootWidget.isPlaying && expandedPlayer.onACPower
                 }
 
                 // Máscara para hacer circular la imagen

@@ -6,6 +6,7 @@ Item {
     id: root
     property var walColors: null
     property var panelWindow: null
+    property bool onACPower: true
 
     implicitWidth: layout.implicitWidth + 20
     implicitHeight: 50
@@ -32,6 +33,12 @@ Item {
 
         CpuModule {
             walColors: root.walColors
+            onACPower: root.onACPower
+        }
+
+        BatteryModule {
+            walColors: root.walColors
+            onACPower: root.onACPower
         }
     }
 }

@@ -35,6 +35,7 @@ Item {
     
     // Load colors from cache
     property var walColors: null
+    property bool onACPower: true
 
 
     RowLayout {
@@ -200,8 +201,12 @@ Item {
             }
         }
 
-        CavaModule {
-            walColors: root.walColors
+        // CavaModule: Only load when on AC power (it's a GPU/CPU hog at 60fps)
+        Loader {
+            active: root.onACPower
+            sourceComponent: CavaModule {
+                walColors: root.walColors
+            }
         }
     }
 }

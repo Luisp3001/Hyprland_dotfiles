@@ -5,6 +5,7 @@ import Quickshell.Io
 Rectangle {
     id: root
     property var walColors: null
+    property bool onACPower: true
     property real cpuPercent: 0.0
     property var _prevCpu: null
 
@@ -65,14 +66,13 @@ Rectangle {
                 from: 0
                 to: 360
                 duration: {
-                    // Base duration (100% CPU) is 400ms, Slowest (0% CPU) is 3000ms
                     var minDuration = 400;
                     var maxDuration = 3000;
                     var speedFactor = root.cpuPercent / 100;
                     return maxDuration - (speedFactor * (maxDuration - minDuration));
                 }
                 loops: Animation.Infinite
-                running: true
+                running: root.onACPower // Only animate when on AC power
             }
         }
 

@@ -23,6 +23,29 @@ ShellRoot {
     property bool powerMenuVisible:    false
     property bool dndEnabled:          false
 
+    // ── Power Mode ─────────────────────────────────────────────────────
+    // true = plugged in (full effects), false = battery (power saving)
+    property bool onACPower: true
+
+    property var acProcess: Process {
+        command: ["sh", "-c", "cat /sys/class/power_supply/BAT0/status 2>/dev/null"]
+        stdout: SplitParser {
+            onRead: function(line) {
+                var status = line.trim();
+                shell.onACPower = (status !== "Discharging");
+            }
+        }
+    }
+
+    Timer {
+        id: acPollTimer
+        interval: 10000 // Check every 10 seconds
+        running: true
+        repeat: true
+        onTriggered: acProcess.running = true
+        Component.onCompleted: acProcess.running = true
+    }
+
     // ── Volume State ───────────────────────────────────────────────────
     property real currentVolume: 0.5
     property bool isMuted: false
@@ -66,7 +89,7 @@ ShellRoot {
     // Fallback poller in case watchChanges fails (e.g. file replacement via sync)
     Timer {
         id: pollTimer
-        interval: 3000
+        interval: shell.onACPower ? 3000 : 10000
         running: true
         repeat: true
         onTriggered: {
@@ -147,7 +170,7 @@ ShellRoot {
 
     Timer {
         id: volPoll
-        interval: 100
+        interval: shell.onACPower ? 100 : 1000
         running: true
         repeat: true
         onTriggered: {
@@ -282,6 +305,7 @@ ShellRoot {
             id: lm
             anchors.fill: parent
             walColors: shell.walColors
+            onACPower: shell.onACPower
         }
     }
 
@@ -331,6 +355,7 @@ ShellRoot {
             anchors.fill: parent
             walColors: shell.walColors
             panelWindow: rightModulesWindow
+            onACPower: shell.onACPower
         }
     }
 
