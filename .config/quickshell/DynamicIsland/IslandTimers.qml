@@ -79,6 +79,11 @@ Item {
         id: notifHandlerConnectionsObj
         target: rootWidget.notifHandler
         function onNotificationArrived() {
+            // Close the notification center if open, so the pill (opacity:0 when
+            // notifCenterVisible) becomes visible again to show the popup.
+            if (rootWidget.notifCenterVisible && rootWidget.onToggleNotifCenter) {
+                rootWidget.onToggleNotifCenter();
+            }
             if (rootWidget.launcherOpen) {
                 launcherOpacityObj.value = 0;
                 rootWidget.launcherOpen = false;

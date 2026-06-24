@@ -470,6 +470,7 @@ ShellRoot {
         visible: shell.screenRecOsdVisible || screenRecOsd.opacity > 0
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
         WlrLayershell.namespace: "screenrec-osd"
 
         ScreenRecOSD {

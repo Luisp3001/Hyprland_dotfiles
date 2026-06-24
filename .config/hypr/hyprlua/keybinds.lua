@@ -5,7 +5,6 @@ local fileManager = "dolphin"
 local menu = "qs ipc call shell toggleLauncher"
 local wallpaper = "qs ipc call shell toggleWallpaper"
 local screenshot = "qs ipc call shell launchScreenshot"
-local overview = "qs ipc call shell toggleOverview"
 local scripts = "~/.config/hypr/scripts_hypr/launcher.sh --script"
 local screenrec = "/home/luisp/.config/quickshell/DynamicIsland/screenrec/wl_screenrec_ctl.sh open-selector -- --audio --audio-device alsa_output.usb-Corsair_Corsair_HS65_SURROUND-00.analog-stereo.monitor"
 
@@ -32,7 +31,6 @@ hl.bind(mainMod .. "+ SHIFT + S", hl.dsp.exec_cmd(screenshot))
 hl.bind(mainMod .. " + backslash", hl.dsp.exec_cmd(scripts))
 hl.bind(mainMod .. " + space", hl.dsp.exec_cmd(menu))
 hl.bind(mainMod .. " + V", hl.dsp.exec_cmd("clipse-gui"))
-hl.bind("ALT + Tab", hl.dsp.exec_cmd(overview))
 hl.bind("CTRL + SHIFT + E", hl.dsp.exec_cmd(screenrec))
 
 -- Binds move focus

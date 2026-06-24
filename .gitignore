@@ -1,2 +1,4 @@
 .stow-local-ignore
 wallpaper
+.config/hypr/colors.lua
+.config/rofi/colors/colors.lua

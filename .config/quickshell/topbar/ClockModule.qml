@@ -24,6 +24,11 @@ Item {
         border.color: root.walColors ? root.walColors.colors.color4 : "transparent"
         border.width: 0
 
+        SystemClock {
+            id: clock
+            precision: SystemClock.Seconds
+        }
+
         // Clock content
         RowLayout {
             anchors.centerIn: parent
@@ -42,15 +47,8 @@ Item {
                 font.family: "JetBrainsMono Nerd Font"
                 font.pixelSize: 12
                 font.weight: Font.Bold
-                text: Qt.formatTime(new Date(), "hh:mm:ss AP")
+                text: Qt.formatDateTime(clock.date, "hh:mm:ss AP")
             }
-        }
-
-        Timer {
-            interval: 1000
-            running: true
-            repeat: true
-            onTriggered: timeText.text = Qt.formatTime(new Date(), "hh:mm:ss AP")
         }
     }
 }
